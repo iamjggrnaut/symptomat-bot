@@ -1,0 +1,40 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  DEPLOY_PATH: "/home/resymon-apps/symptomat-bot/"
+  INFRA_PATH: "/home/resymon-apps/infrastructure/"
+
+docker-build:
+  image: docker:latest
+  stage: build
+  services:
+    - docker:dind
+  before_script:
+    - echo "$DEPLOY_TOKEN_PASSWORD" | docker login -u "$DEPLOY_TOKEN_USER" --password-stdin $CI_REGISTRY
+  script:
+    - docker build --pull -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG" .
+    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
+  only:
+    - tags
+
+deploy:
+  image: kroniak/ssh-client
+  stage: deploy
+  before_script:
+    - 'command -v ssh-agent >/dev/null || ( apk add --update openssh )'
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan $SSH_HOST >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+    - ssh $SSH_USER@$SSH_HOST "sudo mkdir -p $DEPLOY_PATH && sudo chown -R $SSH_USER:$SSH_USER $DEPLOY_PATH"
+  script:
+    - rsync -av --update ./ $SSH_USER@$SSH_HOST:$DEPLOY_PATH
+    - ssh $SSH_USER@$SSH_HOST "cd $INFRA_PATH && sudo docker compose down && sudo docker compose up --build -d"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev"
+      variables:
+        SSH_HOST: $SSH_HOST_DEV
