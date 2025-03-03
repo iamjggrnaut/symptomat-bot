@@ -38,3 +38,4 @@ deploy:
     - if: $CI_COMMIT_BRANCH == "dev"
       variables:
         SSH_HOST: $SSH_HOST_DEV
+        
