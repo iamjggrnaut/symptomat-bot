@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMyDoc = exports.contactMeRequest = exports.sendSurveyAnswers = exports.myActiveSurveys = exports.invitePatient = exports.sendSurveyToPatient = exports.fetchQuestionsByDrug = exports.fetchDrugs = exports.fetchOneSurveyAnswers = exports.fetchPatientSurveys = exports.fetchPatientNotifications = exports.fetchDoctorNotifications = exports.searchPatients = exports.getHospitalPatients = exports.loginPatient = exports.loginDoctor = void 0;
+exports.fetchAllQuestionAnswers = exports.getQuestionAnswers = exports.getMyDoc = exports.contactMeRequest = exports.sendSurveyAnswers = exports.myActiveSurveys = exports.invitePatient = exports.sendSurveyToPatient = exports.fetchQuestionsByDrug = exports.fetchDrugs = exports.fetchOneSurveyAnswers = exports.fetchPatientSurveys = exports.fetchPatientNotifications = exports.fetchDoctorNotifications = exports.searchPatients = exports.getHospitalPatients = exports.loginPatient = exports.loginDoctor = void 0;
 const axios_1 = __importDefault(require("axios"));
 const env_1 = require("../config/env");
 const userSessions = new Map();
@@ -612,14 +612,12 @@ const invitePatient = async (token, input) => {
                 Authorization: `Bearer ${token}`,
             },
         });
-        if (response.data.errors) {
-            console.error("Ошибки в ответе сервера:", response.data.errors);
-            throw new Error(response.data?.errors[0]?.message);
-        }
+        console.log(JSON.stringify(response));
         return response.data;
     }
     catch (error) {
         console.error("Ошибка при выполнении запроса:", error);
+        console.log(JSON.stringify(error));
         throw error;
     }
 };
@@ -744,9 +742,6 @@ const sendSurveyAnswers = async (token, input) => {
             },
         });
         console.log("Ответ сервера:", JSON.stringify(response.data, null, 2));
-        if (response.data.errors) {
-            throw new Error(response.data.errors[0].message);
-        }
         return response;
     }
     catch (error) {
@@ -814,3 +809,140 @@ const getMyDoc = async (token) => {
     }
 };
 exports.getMyDoc = getMyDoc;
+const getQuestionAnswers = async (token, variables) => {
+    try {
+        const response = await axios_1.default.post(env_1.GRAPHQL_ENDPOINT, {
+            operationName: "GetQuestionAnswers",
+            query: `
+          query GetQuestionAnswers(
+            $endAt: DateTime
+            $patientId: UUID!
+            $questionId: UUID!
+            $startAt: DateTime
+            $surveyTemplateId: String
+            $after: String
+            $take: Int
+          ) {
+            doctorFindPatientQuestionAnswers(
+              endAt: $endAt
+              patientId: $patientId
+              questionId: $questionId
+              startAt: $startAt
+              surveyTemplateId: $surveyTemplateId
+              after: $after
+              take: $take
+            ) {
+              pageInfo {
+                endCursor
+                hasNextPage
+                __typename
+              }
+              nodes {
+                id
+                isCritical
+                questionId
+                surveyId
+                createdAt
+                answerQuestionOption {
+                  id
+                  index
+                  text
+                  __typename
+                }
+                answerQuestionOptionId
+                answerQuestionOptions {
+                  id
+                  index
+                  text
+                  __typename
+                }
+                answerQuestionOptionsIds
+                answerValue {
+                  ...AnswerValue
+                  __typename
+                }
+                __typename
+              }
+              __typename
+            }
+          }
+
+          fragment AnswerValue on SurveyAnswerValue {
+            numeric {
+              value
+              __typename
+            }
+            pressure {
+              lowerValue
+              upperValue
+              __typename
+            }
+            pulse {
+              value
+              __typename
+            }
+            scale {
+              value
+              __typename
+            }
+            temperature {
+              value
+              __typename
+            }
+            weight {
+              value
+              __typename
+            }
+            __typename
+          }
+        `,
+            variables,
+        }, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return response.data;
+    }
+    catch (error) {
+        console.error("Ошибка при выполнении запроса:", error);
+        if (error.response) {
+            console.error("Ответ сервера:", error.response.data);
+            throw new Error(error.response.data.errors?.[0]?.message ||
+                "Ошибка при выполнении запроса");
+        }
+        else {
+            throw new Error(error.message);
+        }
+    }
+};
+exports.getQuestionAnswers = getQuestionAnswers;
+const fetchAllQuestionAnswers = async (patientId, token, anotherSurvey) => {
+    try {
+        // Массив для хранения результатов
+        const allQuestionAnswers = [];
+        // Проходим по каждому вопросу в массиве anotherSurvey
+        for (const item of anotherSurvey) {
+            const variables = {
+                patientId: patientId,
+                questionId: item.questionId, // Используем questionId из текущего элемента
+                take: 5,
+            };
+            // Выполняем запрос для текущего вопроса
+            const response = await (0, exports.getQuestionAnswers)(token, variables);
+            // Добавляем результат в массив
+            allQuestionAnswers.push({
+                questionTitle: item.questionTitle,
+                minAnswer: item.minAnswer,
+                maxAnswer: item.maxAnswer,
+                answers: response.data.doctorFindPatientQuestionAnswers.nodes,
+            });
+        }
+        return allQuestionAnswers;
+    }
+    catch (error) {
+        console.error("Ошибка при выполнении запросов:", error);
+        throw error;
+    }
+};
+exports.fetchAllQuestionAnswers = fetchAllQuestionAnswers;

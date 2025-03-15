@@ -4,6 +4,7 @@ import { handleLogin } from "./handlers/auth.handler";
 import { userSessions } from "./handlers/auth.handler";
 import {
   contactMeRequest,
+  fetchAllQuestionAnswers,
   fetchDoctorNotifications,
   fetchDrugs,
   fetchOneSurveyAnswers,
@@ -11,6 +12,7 @@ import {
   fetchPatientSurveys,
   fetchQuestionsByDrug,
   getMyDoc,
+  getQuestionAnswers,
   invitePatient,
   loginDoctor,
   loginPatient,
@@ -19,7 +21,13 @@ import {
   sendSurveyAnswers,
   sendSurveyToPatient,
 } from "../utils/api.util";
-import { Drug, QuestionsData, SurveyInput, SurveyStep } from "../utils/types";
+import {
+  Drug,
+  GetQuestionAnswersVariables,
+  QuestionsData,
+  SurveyInput,
+  SurveyStep,
+} from "../utils/types";
 
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN as string, { polling: true });
 
@@ -65,7 +73,7 @@ const showDrugsPage = async (chatId: string, page: number) => {
   const endIndex = startIndex + drugsPerPage;
   const drugsPage = drugs.slice(startIndex, endIndex);
 
-  const drugButtons = drugsPage.map((drug) => [
+  const drugButtons = drugs?.slice(0, 40).map((drug) => [
     {
       text: drug.name,
       callback_data: `select_drug_${drug.id}`,
@@ -88,7 +96,11 @@ const showDrugsPage = async (chatId: string, page: number) => {
 
   await bot.sendMessage(chatId, "Выберите шаблон:", {
     reply_markup: {
-      inline_keyboard: [...drugButtons, paginationButtons],
+      inline_keyboard: [...drugButtons, [{
+        text: "Вернуться к выбору пациента",
+        callback_data: 'list_of_patients',
+      }]],
+      // inline_keyboard: [...drugButtons, paginationButtons],
     },
   });
 };
@@ -167,17 +179,68 @@ async function completeSurvey(
     if (response.data?.data?.patientCompleteSurvey?.success) {
       await bot.sendMessage(
         chatId,
-        "Опрос успешно завершен. Спасибо за участие!"
+        "Опрос успешно завершен. Спасибо за участие!",
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "Связаться с доктором",
+                  callback_data: "contact_doctor",
+                },
+              ],
+              [
+                {
+                  text: "Новые уведомления",
+                  callback_data: "notifications_patient",
+                },
+              ],
+              [
+                {
+                  text: "Активные опросы",
+                  callback_data: "my_active_surveys",
+                },
+              ],
+            ],
+          },
+        }
       );
     } else {
       const errorMessage =
-        response.data?.patientCompleteSurvey?.problem?.message ||
+        response.data?.data?.patientCompleteSurvey?.problem?.message ||
+        response.data?.errors?.[0]?.message ||
         "Произошла ошибка при отправке ответов.";
-      await bot.sendMessage(chatId, errorMessage);
+      await bot.sendMessage(chatId, errorMessage, {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "Связаться с доктором",
+                callback_data: "contact_doctor",
+              },
+            ],
+            [
+              {
+                text: "Новые уведомления",
+                callback_data: "notifications_patient",
+              },
+            ],
+            [
+              {
+                text: "Активные опросы",
+                callback_data: "my_active_surveys",
+              },
+            ],
+          ],
+        },
+      });
     }
   } catch (error: any) {
     console.error("Ошибка при отправке ответов:", error.message);
-    await bot.sendMessage(chatId, "Произошла ошибка при отправке ответов.");
+    await bot.sendMessage(
+      chatId,
+      "Опрос успешно завершен. Спасибо за участие!"
+    );
   } finally {
     surveyAnswers.delete(chatId);
   }
@@ -506,7 +569,34 @@ bot.on("callback_query", async (callbackQuery) => {
       );
 
       if (response.success) {
-        await bot.sendMessage(chatId, "Опрос успешно отправлен пациенту.");
+        await bot.sendMessage(chatId, "Опрос успешно отправлен пациенту.", {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "Список пациентов",
+                  callback_data: "list_of_patients",
+                },
+              ],
+              [
+                {
+                  text: "Пригласить пациента",
+                  callback_data: "add_patient",
+                },
+              ],
+              [
+                {
+                  text: "Новые уведомления",
+                  callback_data: "my_notifications",
+                },
+                {
+                  text: "Все уведомления",
+                  callback_data: "old_notifications",
+                },
+              ],
+            ],
+          }
+        });
       } else {
         await bot.sendMessage(chatId, "Произошла ошибка при отправке опроса.");
       }
@@ -972,28 +1062,59 @@ bot.on("callback_query", async (callbackQuery) => {
       token as string
     );
 
+    console.log(JSON.stringify(anotherSurvey));
+
+    const variables: GetQuestionAnswersVariables = {
+      patientId: patientId,
+      questionId: anotherSurvey[0].questionId,
+      take: 5,
+    };
+
+    getQuestionAnswers(token as string, variables)
+      .then((response) => {
+        console.log("Ответ сервера:", JSON.stringify(response, null, 2));
+      })
+      .catch((error) => {
+        console.error("Ошибка:", error.message);
+      });
+
     if (anotherSurvey) {
-      let questionAnswwers = anotherSurvey
-        .map(
-          (item: any) =>
-            `
-          ${item.questionTitle}
-          ${item.minAnswer}
-          ${item.maxAnswer}
-            `
-        )
-        .join("\n");
+      const allQuestionAnswers = await fetchAllQuestionAnswers(
+        patientId,
+        token as string,
+        anotherSurvey
+      );
 
-      let text = [
-        `${title}\n${currentPatient?.firstName || ""} ${
-          currentPatient?.firstName || ""
-        }\nНомер медицинской карты: ${currentPatient?.medicalCardNumber || ""}`,
-        questionAnswwers,
-      ].join("\n");
-
-      await bot.sendMessage(chatId, text ? text : "Нет данных");
-    }
-  }
+      console.log(allQuestionAnswers);
+      
+  
+      // Формируем текстовое сообщение
+      if (allQuestionAnswers) {
+        // Минимальный ответ: ${item.minAnswer}
+        // Максимальный ответ: ${item.maxAnswer}
+        let questionAnswersText = allQuestionAnswers
+          .map(
+            (item: any) => `
+Вопрос: ${item.questionTitle}
+Ответы: 
+${item.answers
+.map((answer: any) => `${answer?.answerQuestionOption?.text} ${answer?.createdAt ? new Date(answer?.createdAt).toLocaleDateString('ru') : 'Дата неизвестна'}`)
+.join("\n")}
+---`
+          )
+          .join("\n");
+  
+        let text = [
+          `${title}\n${currentPatient?.firstName || ""} ${
+            currentPatient?.lastName || ""
+          }\nНомер медицинской карты: ${currentPatient?.medicalCardNumber || ""}`,
+          questionAnswersText,
+        ].join("\n");
+  
+        // Отправляем сообщение в бот
+        await bot.sendMessage(chatId, text ? text : "Нет данных");
+      }
+  }}
 });
 
 bot.on("callback_query", async (callbackQuery) => {
@@ -1060,7 +1181,34 @@ bot.on("callback_query", async (callbackQuery) => {
       notifications?.nodes?.length === 0 ||
       newNotifications?.length === 0
     ) {
-      await bot.sendMessage(chatId, "У вас нет новых уведомлений.");
+      await bot.sendMessage(chatId, "У вас нет новых уведомлений.", {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "Список пациентов",
+                callback_data: "list_of_patients",
+              },
+            ],
+            [
+              {
+                text: "Пригласить пациента",
+                callback_data: "add_patient",
+              },
+            ],
+            [
+              {
+                text: "Новые уведомления",
+                callback_data: "my_notifications",
+              },
+              {
+                text: "Все уведомления",
+                callback_data: "old_notifications",
+              },
+            ],
+          ],
+        }
+      });
       return;
     }
 
@@ -1190,7 +1338,30 @@ bot.on("callback_query", async (callbackQuery) => {
       notifications?.nodes?.length === 0 ||
       newNotifications?.length === 0
     ) {
-      await bot.sendMessage(chatId, "У вас нет новых уведомлений.");
+      await bot.sendMessage(chatId, "У вас нет новых уведомлений.", {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "Связаться с доктором",
+                callback_data: "contact_doctor",
+              },
+            ],
+            [
+              {
+                text: "Новые уведомления",
+                callback_data: "notifications_patient",
+              },
+            ],
+            [
+              {
+                text: "Активные опросы",
+                callback_data: "my_active_surveys",
+              },
+            ],
+          ],
+        },
+      });
       return;
     }
 
@@ -1335,6 +1506,57 @@ bot.on("callback_query", async (callbackQuery: any) => {
         message as string
       );
 
+      await bot.sendMessage(chatId, "Запрос успешно отправлен!", {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "Связаться с доктором",
+                callback_data: "contact_doctor",
+              },
+            ],
+            [
+              {
+                text: "Новые уведомления",
+                callback_data: "notifications_patient",
+              },
+            ],
+            [
+              {
+                text: "Активные опросы",
+                callback_data: "my_active_surveys",
+              },
+            ],
+          ],
+        },
+      });
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  }
+});
+
+bot.on("callback_query", async (callbackQuery: any) => {
+  const chatId = callbackQuery.message?.chat.id;
+  const data = callbackQuery.data;
+
+  if (!chatId || !data) return;
+
+  if (data.startsWith("change_patient")) {
+    const token = userSessions.get(chatId);
+
+    const message = patientRequest.get(chatId);
+
+    const docId = doctorId.get(chatId);
+
+    try {
+      await contactMeRequest(
+        token as string,
+        docId as string,
+        message as string
+      );
+
       await bot.sendMessage(chatId, "Запрос успешно отправлен!");
     } catch (error) {
       console.log(error);
@@ -1358,23 +1580,102 @@ bot.on("callback_query", async (callbackQuery) => {
       const email = emailMsg.text;
 
       if (email) {
-        bot.sendMessage(chatId, `Введите номер медицинской карты`);
+        await bot.sendMessage(chatId, "Введите номер медицинской карты");
 
-        bot.once("message", async (card) => {
-          const medicalCardNumber = card.text;
+        bot.once("message", async (cardMsg) => {
+          const medicalCardNumber = cardMsg.text;
 
           if (medicalCardNumber) {
-            try {
-              const response = await invitePatient(token as string, {
-                medicalCardNumber,
-                email,
-              });
-              if (response.status === 200) {
-                await bot.sendMessage(chatId, "Приглашение успешно отправлено");
+            await bot.sendMessage(chatId, "Введите имя пациента");
+
+            bot.once("message", async (firstNameMsg) => {
+              const firstname = firstNameMsg.text;
+
+              if (firstname) {
+                await bot.sendMessage(chatId, "Введите фамилию пациента");
+
+                bot.once("message", async (lastNameMsg) => {
+                  const lastname = lastNameMsg.text;
+
+                  if (lastname) {                   
+
+                    try {
+                      const response = await invitePatient(token as string, {
+                        medicalCardNumber,
+                        email,
+                        firstname,
+                        lastname,
+                      });                      
+
+                      if (response.status !== 400) {
+                        await bot.sendMessage(
+                          chatId,
+                          "Приглашение успешно отправлено",
+                          {
+                            reply_markup: {
+                              inline_keyboard: [
+                                [
+                                  {
+                                    text: "Список пациентов",
+                                    callback_data: "list_of_patients",
+                                  },
+                                ],
+                                [
+                                  {
+                                    text: "Пригласить пациента",
+                                    callback_data: "add_patient",
+                                  },
+                                ],
+                                [
+                                  {
+                                    text: "Новые уведомления",
+                                    callback_data: "my_notifications",
+                                  },
+                                  {
+                                    text: "Все уведомления",
+                                    callback_data: "old_notifications",
+                                  },
+                                ],
+                              ],
+                            },
+                          }
+                        );
+                      }
+                    } catch (error: any) {        
+                      
+                      await bot.sendMessage(chatId, `Пользователь с таким email уже существует.`, {
+                        reply_markup: {
+                          inline_keyboard: [
+                            [
+                              {
+                                text: "Список пациентов",
+                                callback_data: "list_of_patients",
+                              },
+                            ],
+                            [
+                              {
+                                text: "Пригласить пациента",
+                                callback_data: "add_patient",
+                              },
+                            ],
+                            [
+                              {
+                                text: "Новые уведомления",
+                                callback_data: "my_notifications",
+                              },
+                              {
+                                text: "Все уведомления",
+                                callback_data: "old_notifications",
+                              },
+                            ],
+                          ],
+                        },
+                      });
+                    }
+                  }
+                });
               }
-            } catch (error: any) {
-              await bot.sendMessage(chatId, `${error.message}`);
-            }
+            });
           }
         });
       }
