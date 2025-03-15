@@ -65,13 +65,7 @@ const showDrugsPage = async (chatId: string, page: number) => {
   const endIndex = startIndex + drugsPerPage;
   const drugsPage = drugs.slice(startIndex, endIndex);
 
-  // const drugButtons = drugsPage.map((drug) => [
-  //   {
-  //     text: drug.name,
-  //     callback_data: `select_drug_${drug.id}`,
-  //   },
-  // ]);
-  const drugButtons = drugs.map((drug) => [
+  const drugButtons = drugsPage.map((drug) => [
     {
       text: drug.name,
       callback_data: `select_drug_${drug.id}`,
@@ -94,7 +88,7 @@ const showDrugsPage = async (chatId: string, page: number) => {
 
   await bot.sendMessage(chatId, "Выберите шаблон:", {
     reply_markup: {
-      inline_keyboard: [...drugButtons],
+      inline_keyboard: [...drugButtons, paginationButtons],
     },
   });
 };
@@ -1272,7 +1266,20 @@ bot.on("callback_query", async (callbackQuery) => {
   if (data.startsWith("selectdrug")) {
     const token = userSessions.get(chatId);
 
-    await showDrugsPage(String(chatId), currentPage);
+    const drugs = Array.from(drugsMap.values());
+    const drugButtons = drugs.map((drug) => [
+      {
+        text: drug.name,
+        callback_data: `select_drug_${drug.id}`,
+      },
+    ]);
+    await bot.sendMessage(chatId, "Выберите шаблон:", {
+      reply_markup: {
+        inline_keyboard: [...drugButtons],
+      },
+    });
+
+    // await showDrugsPage(String(chatId), currentPage);
   }
 });
 
