@@ -4,7 +4,6 @@ exports.handleLogin = exports.userSessions = void 0;
 exports.userSessions = new Map();
 const handleLogin = async (bot, msg) => {
     const chatId = msg.chat.id;
-    // Предлагаем выбрать роль с помощью inline-кнопок
     await bot.sendMessage(chatId, "Выберите роль:", {
         reply_markup: {
             inline_keyboard: [

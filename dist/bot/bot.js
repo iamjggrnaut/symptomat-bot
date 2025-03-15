@@ -38,7 +38,13 @@ const showDrugsPage = async (chatId, page) => {
     const startIndex = page * drugsPerPage;
     const endIndex = startIndex + drugsPerPage;
     const drugsPage = drugs.slice(startIndex, endIndex);
-    const drugButtons = drugsPage.map((drug) => [
+    // const drugButtons = drugsPage.map((drug) => [
+    //   {
+    //     text: drug.name,
+    //     callback_data: `select_drug_${drug.id}`,
+    //   },
+    // ]);
+    const drugButtons = drugs.map((drug) => [
         {
             text: drug.name,
             callback_data: `select_drug_${drug.id}`,
@@ -69,11 +75,9 @@ async function askQuestion(chatId, questions, questionIndex) {
         await bot.sendMessage(chatId, "Ошибка: вопрос не найден.");
         return;
     }
-    // Обрабатываем разные типы вопросов
     switch (question.type) {
         case "RADIO":
         case "CHECKBOX":
-            // Формируем inline-клавиатуру для RADIO и CHECKBOX
             const options = question.options?.map((option) => [
                 {
                     text: option.text,
@@ -96,7 +100,6 @@ async function askQuestion(chatId, questions, questionIndex) {
         case "WEIGHT":
         case "PULSE":
         case "PRESSURE":
-            // Для числовых вопросов просим ввести значение
             await bot.sendMessage(chatId, `${question.title}\n\nПожалуйста, введите числовое значение:`);
             break;
         default:
@@ -275,7 +278,6 @@ bot.on("message", async (msg) => {
         }
     }
     else {
-        // Обработка ответов на вопросы опроса
         const userSurvey = exports.surveyAnswers.get(chatId);
         if (!userSurvey ||
             !userSurvey.questions ||
@@ -322,7 +324,6 @@ bot.on("message", async (msg) => {
                 await bot.sendMessage(chatId, "Неизвестный тип вопроса.");
                 return;
         }
-        // Переход к следующему вопросу
         if (currentQuestionIndex + 1 < userSurvey.questions.length) {
             await askQuestion(chatId, userSurvey.questions, currentQuestionIndex + 1);
         }
@@ -443,7 +444,6 @@ bot.on("callback_query", async (callbackQuery) => {
                         await bot.sendMessage(chatId, "Вы успешно авторизованы как доктор!");
                         fetchDrugsAndQuestions(doctorResponse?.token);
                         const patients = await (0, api_util_1.searchPatients)("", 20, doctorResponse.token);
-                        // console.log(JSON.stringify(patients));
                         await bot.sendMessage(chatId, "Что Вас интересует?", {
                             reply_markup: {
                                 inline_keyboard: [
@@ -560,9 +560,9 @@ bot.on("callback_query", async (callbackQuery) => {
                 Array.isArray(survey.template.questions)) {
                 exports.activeSurvey.set(chatId, survey);
                 exports.surveyAnswers.set(chatId, {
-                    surveyId: survey.id, // Сохраняем ID опроса
-                    questions: survey.template.questions, // Сохраняем вопросы
-                    answers: [], // Массив для хранения ответов
+                    surveyId: survey.id,
+                    questions: survey.template.questions,
+                    answers: [],
                 });
                 await bot.sendMessage(chatId, "Активный опрос: ", {
                     reply_markup: {
@@ -576,8 +576,6 @@ bot.on("callback_query", async (callbackQuery) => {
                         ],
                     },
                 });
-                // Начинаем опрос с первого вопроса
-                // await askQuestion(chatId, survey.template.questions, 0);
             }
             else {
                 await bot.sendMessage(chatId, "Активных опросов не найдено.");
@@ -633,7 +631,6 @@ bot.on("callback_query", async (callbackQuery) => {
             });
         }
         else if (question.type === "CHECKBOX") {
-            // Для CHECKBOX нужно добавить массив выбранных ответов
             const existingAnswer = userSurvey.answers.find((ans) => ans.questionId === question.id);
             if (existingAnswer) {
                 existingAnswer.answerQuestionOptionsIds.push(answerId);
@@ -646,7 +643,6 @@ bot.on("callback_query", async (callbackQuery) => {
                 });
             }
         }
-        // Переход к следующему вопросу
         if (questionIndex + 1 < userSurvey.questions.length) {
             await askQuestion(chatId, userSurvey.questions, questionIndex + 1);
         }
@@ -870,14 +866,12 @@ bot.on("callback_query", async (callbackQuery) => {
             await bot.sendMessage(chatId, "Вы не авторизованы. Пожалуйста, авторизуйтесь.");
             return;
         }
-        // Получаем уведомления с backend
         const notifications = await (0, api_util_1.fetchDoctorNotifications)(chatId.toString(), 20, "20", token);
         console.log(notifications);
         if (!notifications || notifications.nodes.length === 0) {
             await bot.sendMessage(chatId, "У вас нет уведомлений.");
             return;
         }
-        // Форматируем уведомления для отправки
         const formattedNotifications = notifications.nodes
             .map((edge) => {
             return `📅 ${new Date(edge.createdAt).toLocaleString()}\n📝 ${edge.description}`;

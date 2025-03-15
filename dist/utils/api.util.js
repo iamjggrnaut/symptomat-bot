@@ -116,8 +116,7 @@ const searchPatients = async (filter, first, token) => {
 };
 exports.searchPatients = searchPatients;
 const fetchDoctorNotifications = async (doctorId, first, after, token) => {
-    const response = await axios_1.default.post(env_1.GRAPHQL_ENDPOINT, // Замените на ваш GraphQL endpoint
-    {
+    const response = await axios_1.default.post(env_1.GRAPHQL_ENDPOINT, {
         query: `
       query GetNotifications($after: String, $first: Int) {
         doctorGetNotifications(after: $after, first: $first) {
@@ -170,9 +169,7 @@ const fetchDoctorNotifications = async (doctorId, first, after, token) => {
 
     `,
         variables: {
-            // doctorId,
             first,
-            // after,
         },
     }, {
         headers: {
@@ -183,8 +180,7 @@ const fetchDoctorNotifications = async (doctorId, first, after, token) => {
 };
 exports.fetchDoctorNotifications = fetchDoctorNotifications;
 const fetchPatientNotifications = async (first, token) => {
-    const response = await axios_1.default.post(env_1.GRAPHQL_ENDPOINT, // Замените на ваш GraphQL endpoint
-    {
+    const response = await axios_1.default.post(env_1.GRAPHQL_ENDPOINT, {
         query: `
       query GetNotifications($after: String, $first: Int) {
         patientGetNotifications(after: $after, first: $first) {
@@ -210,7 +206,6 @@ const fetchPatientNotifications = async (first, token) => {
     `,
         variables: {
             first,
-            // after: ''
         },
     }, {
         headers: {
@@ -222,8 +217,7 @@ const fetchPatientNotifications = async (first, token) => {
 exports.fetchPatientNotifications = fetchPatientNotifications;
 const fetchPatientSurveys = async (patientId, surveyTemplateId, token) => {
     try {
-        const response = await axios_1.default.post(env_1.GRAPHQL_ENDPOINT, // Замените на ваш GraphQL endpoint
-        {
+        const response = await axios_1.default.post(env_1.GRAPHQL_ENDPOINT, {
             query: `
         query GetPassedSurveyTemplatesForPatient($patientId: UUID!) {
           doctorFindPatientPrivateSurveyTemplates(patientId: $patientId) {
@@ -307,14 +301,12 @@ const fetchPatientSurveys = async (patientId, surveyTemplateId, token) => {
       `,
             variables: {
                 patientId: patientId,
-                // surveyTemplateId: surveyTemplateId ?? null,
             },
         }, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
         });
-        // Проверка на наличие ошибок в ответе
         if (response.data.errors) {
             console.error("Ошибки в ответе сервера:", response.data.errors);
             throw new Error("Ошибка в GraphQL-запросе");
@@ -329,8 +321,7 @@ const fetchPatientSurveys = async (patientId, surveyTemplateId, token) => {
 exports.fetchPatientSurveys = fetchPatientSurveys;
 const fetchOneSurveyAnswers = async (patientId, surveyTemplateId, token) => {
     try {
-        const response = await axios_1.default.post(env_1.GRAPHQL_ENDPOINT, // Замените на ваш GraphQL endpoint
-        {
+        const response = await axios_1.default.post(env_1.GRAPHQL_ENDPOINT, {
             query: `query GetSurveyAnswers($patientId: UUID!, $surveyTemplateId: UUID) {
           doctorFindPatientSurveyAnswers(
             patientId: $patientId
@@ -393,7 +384,6 @@ const fetchOneSurveyAnswers = async (patientId, surveyTemplateId, token) => {
                 Authorization: `Bearer ${token}`,
             },
         });
-        // Проверка на наличие ошибок в ответе
         if (response.data.errors) {
             console.error("Ошибки в ответе сервера:", response.data.errors);
             throw new Error("Ошибка в GraphQL-запросе");
@@ -408,8 +398,7 @@ const fetchOneSurveyAnswers = async (patientId, surveyTemplateId, token) => {
 exports.fetchOneSurveyAnswers = fetchOneSurveyAnswers;
 const fetchDrugs = async (token) => {
     try {
-        const response = await axios_1.default.post(env_1.GRAPHQL_ENDPOINT, // Замените на ваш GraphQL endpoint
-        {
+        const response = await axios_1.default.post(env_1.GRAPHQL_ENDPOINT, {
             query: `query GetDrugsFromDB($filter: String) {
           drugsSearch(filter: $filter) {
             id
@@ -424,16 +413,13 @@ const fetchDrugs = async (token) => {
                 Authorization: `Bearer ${token}`,
             },
         });
-        // Проверка на наличие ошибок в ответе
         if (response.data.errors) {
             console.error("Ошибки в ответе сервера:", response.data.errors);
             throw new Error("Ошибка в GraphQL-запросе");
         }
         const res = response.data?.data?.drugsSearch;
-        // РАСКОММЕНТИРОВАТЬ!
-        // const filtered = res.filter(
-        //   (item: any) => item.name?.indexOf("Космето") >= 0
-        // );
+        // ХАРДКОД УБРАТЬ!
+        const filtered = res.filter((item) => item.name?.indexOf("Космето") >= 0);
         return res;
     }
     catch (error) {
@@ -444,8 +430,7 @@ const fetchDrugs = async (token) => {
 exports.fetchDrugs = fetchDrugs;
 const fetchQuestionsByDrug = async (token, id) => {
     try {
-        const response = await axios_1.default.post(env_1.GRAPHQL_ENDPOINT, // Замените на ваш GraphQL endpoint
-        {
+        const response = await axios_1.default.post(env_1.GRAPHQL_ENDPOINT, {
             query: `query GetDrugQuestions($id: UUID!) {
           drugFindQuestions(id: $id) {
             ...Question
@@ -489,7 +474,6 @@ const fetchQuestionsByDrug = async (token, id) => {
                 Authorization: `Bearer ${token}`,
             },
         });
-        // Проверка на наличие ошибок в ответе
         if (response.data.errors) {
             console.error("Ошибки в ответе сервера:", response.data.errors);
             throw new Error("Ошибка в GraphQL-запросе");
@@ -583,17 +567,15 @@ const sendSurveyToPatient = async (token, input) => {
                 Authorization: `Bearer ${token}`,
             },
         });
-        // Проверка на наличие ошибок в ответе
         if (response.data.errors) {
             console.error("Ошибки в ответе сервера:", response.data.errors);
             throw new Error("Ошибка в GraphQL-запросе");
         }
-        const surveyTemplate = response.data.data.doctorCreatePrivateSurveyTemplate.surveyTemplate; //  Извлекаем surveyTemplate
+        const surveyTemplate = response.data.data.doctorCreatePrivateSurveyTemplate.surveyTemplate;
         if (surveyTemplate) {
-            return { success: true, surveyTemplate: surveyTemplate }; // Вернем только success и surveyTemplate
+            return { success: true, surveyTemplate: surveyTemplate };
         }
         else {
-            // Обработка ошибки (например, опрос не создан)
             return { success: false, error: "Не удалось создать шаблон опроса." };
         }
     }
@@ -630,7 +612,6 @@ const invitePatient = async (token, input) => {
                 Authorization: `Bearer ${token}`,
             },
         });
-        // Проверка на наличие ошибок в ответе
         if (response.data.errors) {
             console.error("Ошибки в ответе сервера:", response.data.errors);
             throw new Error(response.data?.errors[0]?.message);

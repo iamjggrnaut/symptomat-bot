@@ -33,7 +33,7 @@ export const surveyAnswers = new Map<
   number,
   {
     surveyId: string;
-    questions: any[]; 
+    questions: any[];
     answers: any[];
   }
 >();
@@ -65,7 +65,13 @@ const showDrugsPage = async (chatId: string, page: number) => {
   const endIndex = startIndex + drugsPerPage;
   const drugsPage = drugs.slice(startIndex, endIndex);
 
-  const drugButtons = drugsPage.map((drug) => [
+  // const drugButtons = drugsPage.map((drug) => [
+  //   {
+  //     text: drug.name,
+  //     callback_data: `select_drug_${drug.id}`,
+  //   },
+  // ]);
+  const drugButtons = drugs.map((drug) => [
     {
       text: drug.name,
       callback_data: `select_drug_${drug.id}`,
@@ -734,9 +740,9 @@ bot.on("callback_query", async (callbackQuery: any) => {
         activeSurvey.set(chatId, survey);
 
         surveyAnswers.set(chatId, {
-          surveyId: survey.id, 
-          questions: survey.template.questions, 
-          answers: [], 
+          surveyId: survey.id,
+          questions: survey.template.questions,
+          answers: [],
         });
 
         await bot.sendMessage(chatId, "Активный опрос: ", {
