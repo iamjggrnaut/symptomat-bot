@@ -94,7 +94,7 @@ const showDrugsPage = async (chatId: string, page: number) => {
 
   await bot.sendMessage(chatId, "Выберите шаблон:", {
     reply_markup: {
-      inline_keyboard: [...drugButtons, paginationButtons],
+      inline_keyboard: [...drugButtons],
     },
   });
 };
