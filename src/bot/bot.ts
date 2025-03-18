@@ -73,7 +73,7 @@ const showDrugsPage = async (chatId: string, page: number) => {
   const endIndex = startIndex + drugsPerPage;
   const drugsPage = drugs.slice(startIndex, endIndex);
 
-  const drugButtons = drugs?.slice(0, 40).map((drug) => [
+  const drugButtons = drugs.slice(0, 40).map((drug) => [
     {
       text: drug.name,
       callback_data: `select_drug_${drug.id}`,
