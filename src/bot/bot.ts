@@ -260,8 +260,8 @@ const fetchDrugsAndQuestions = async (token: string) => {
   }
 };
 
-bot.onText(/\/start/, (msg) => {
-  bot.sendMessage(
+bot.onText(/\/start/, async(msg) => {
+  await bot.sendMessage(
     msg.chat.id,
     "Добро пожаловать! Используйте /login для авторизации.",
     {
