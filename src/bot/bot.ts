@@ -263,7 +263,7 @@ const fetchDrugsAndQuestions = async (token: string) => {
 bot.onText(/\/start/, async(msg) => {
   await bot.sendMessage(
     msg.chat.id,
-    "Добро пожаловать! Используйте /login для авторизации.",
+    "Добро пожаловать в Symptomat!",
     {
       reply_markup: {
         inline_keyboard: [
@@ -291,6 +291,128 @@ bot.on('callback_query', async (callbackQuery: any) => {
     handleSelectRole(bot, msg);
   } else if( data === 'register'){
     await bot.sendMessage(chatId, 'Hello')
+    await bot.sendMessage(chatId, "Введите email для отправки приглашения");
+
+    bot.once("message", async (emailMsg) => {
+      const email = emailMsg.text;
+
+      if (email) {
+        await bot.sendMessage(chatId, "Введите номер медицинской карты");
+
+        bot.once("message", async (cardMsg) => {
+          const medicalCardNumber = cardMsg.text;
+
+          if (medicalCardNumber) {
+            await bot.sendMessage(chatId, "Введите имя пациента");
+
+            bot.once("message", async (firstNameMsg) => {
+              const firstname = firstNameMsg.text;
+
+              if (firstname) {
+                await bot.sendMessage(chatId, "Введите фамилию пациента");
+
+                bot.once("message", async (lastNameMsg) => {
+                  const lastname = lastNameMsg.text;
+
+                  if (lastname) {
+
+                    const token = ''
+
+                    // try {
+                    //   const response = await invitePatient(token as string, {
+                    //     medicalCardNumber,
+                    //     email,
+                    //     firstname,
+                    //     lastname,
+                    //   });
+
+                    //   if (response.status !== 400) {
+                    //     await bot.sendMessage(
+                    //       chatId,
+                    //       "Приглашение успешно отправлено",
+                    //       {
+                    //         reply_markup: {
+                    //           inline_keyboard: [
+                    //             [
+                    //               {
+                    //                 text: "Список пациентов",
+                    //                 callback_data: "list_of_patients",
+                    //               },
+                    //             ],
+                    //             [
+                    //               {
+                    //                 text: "Пригласить пациента",
+                    //                 callback_data: "add_patient",
+                    //               },
+                    //             ],
+                    //             [
+                    //               {
+                    //                 text: "Новые уведомления",
+                    //                 callback_data: "my_notifications",
+                    //               },
+                    //               {
+                    //                 text: "Все уведомления",
+                    //                 callback_data: "old_notifications",
+                    //               },
+                    //             ],
+                    //           ],
+                    //         },
+                    //       }
+                    //     );
+                    //   }
+                    // } catch (error: any) {
+                    //   await bot.sendMessage(
+                    //     chatId,
+                    //     `Пользователь с таким email уже существует.`,
+                    //     {
+                    //       reply_markup: {
+                    //         inline_keyboard: [
+                    //           [
+                    //             {
+                    //               text: "Список пациентов",
+                    //               callback_data: "list_of_patients",
+                    //             },
+                    //           ],
+                    //           [
+                    //             {
+                    //               text: "Пригласить пациента",
+                    //               callback_data: "add_patient",
+                    //             },
+                    //           ],
+                    //           [
+                    //             {
+                    //               text: "Новые уведомления",
+                    //               callback_data: "my_notifications",
+                    //             },
+                    //             {
+                    //               text: "Все уведомления",
+                    //               callback_data: "old_notifications",
+                    //             },
+                    //           ],
+                    //         ],
+                    //       },
+                    //     }
+                    //   );
+                    // }
+                    
+                    await bot.sendMessage(chatId, 'Данные получены', {
+                      reply_markup: {
+                        inline_keyboard: [
+                          [{
+                            text: 'Зарегистрироваться?',
+                            callback_data: 'confirm-registration'
+                          }]
+                        ]
+                      }
+                    })
+                  }
+                })
+              }
+            })
+          }
+        })
+      }
+    })
   }
 });
 
