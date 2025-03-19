@@ -8,11 +8,13 @@ import { error } from "console";
 
 export const userSessions = new Map<number, string>();
 
-export const handleLogin = async (
+
+
+export const handleSelectRole = async (
   bot: TelegramBot,
   msg: TelegramBot.Message
 ) => {
-  const chatId = msg.chat.id;
+  const chatId = msg?.chat?.id;
 
   await bot.sendMessage(chatId, "Выберите роль:", {
     reply_markup: {

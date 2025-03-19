@@ -1,6 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
 import { TELEGRAM_BOT_TOKEN } from "../config/env";
-import { handleLogin } from "./handlers/auth.handler";
+import { handleSelectRole } from "./handlers/auth.handler";
 import { userSessions } from "./handlers/auth.handler";
 import {
   contactMeRequest,
@@ -96,10 +96,15 @@ const showDrugsPage = async (chatId: string, page: number) => {
 
   await bot.sendMessage(chatId, "Выберите шаблон:", {
     reply_markup: {
-      inline_keyboard: [...drugButtons, [{
-        text: "Вернуться к выбору пациента",
-        callback_data: 'list_of_patients',
-      }]],
+      inline_keyboard: [
+        ...drugButtons,
+        [
+          {
+            text: "Вернуться к выбору пациента",
+            callback_data: "list_of_patients",
+          },
+        ],
+      ],
       // inline_keyboard: [...drugButtons, paginationButtons],
     },
   });
@@ -258,12 +263,35 @@ const fetchDrugsAndQuestions = async (token: string) => {
 bot.onText(/\/start/, (msg) => {
   bot.sendMessage(
     msg.chat.id,
-    "Добро пожаловать! Используйте /login для авторизации."
+    "Добро пожаловать! Используйте /login для авторизации.",
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{
+            text: 'Зарегистрироваться',
+            callback_data: 'register'
+          }],
+          [{
+            text: 'Войти',
+            callback_data: 'login'
+          }],
+        ]
+      }
+    }
   );
 });
 
-bot.onText(/\/login/, (msg) => {
-  handleLogin(bot, msg);
+bot.on('callback_query', async (callbackQuery: any) => {
+  
+  const data = callbackQuery.data
+  const chatId = callbackQuery.message?.chat.id;
+
+  if(data === 'login'){
+    const msg = callbackQuery.message
+    handleSelectRole(bot, msg);
+  } else if( data === 'register'){
+    await bot.sendMessage(chatId, 'Hello')
+  }
 });
 
 bot.on("callback_query", async (callbackQuery: any) => {
@@ -595,7 +623,7 @@ bot.on("callback_query", async (callbackQuery) => {
                 },
               ],
             ],
-          }
+          },
         });
       } else {
         await bot.sendMessage(chatId, "Произошла ошибка при отправке опроса.");
@@ -1086,8 +1114,7 @@ bot.on("callback_query", async (callbackQuery) => {
       );
 
       console.log(allQuestionAnswers);
-      
-  
+
       // Формируем текстовое сообщение
       if (allQuestionAnswers) {
         // Минимальный ответ: ${item.minAnswer}
@@ -1098,23 +1125,33 @@ bot.on("callback_query", async (callbackQuery) => {
 Вопрос: ${item.questionTitle}
 Ответы: 
 ${item.answers
-.map((answer: any) => `${answer?.answerQuestionOption?.text} ${answer?.createdAt ? new Date(answer?.createdAt).toLocaleDateString('ru') : 'Дата неизвестна'}`)
-.join("\n")}
+  .map(
+    (answer: any) =>
+      `${answer?.answerQuestionOption?.text} ${
+        answer?.createdAt
+          ? new Date(answer?.createdAt).toLocaleDateString("ru")
+          : "Дата неизвестна"
+      }`
+  )
+  .join("\n")}
 ---`
           )
           .join("\n");
-  
+
         let text = [
           `${title}\n${currentPatient?.firstName || ""} ${
             currentPatient?.lastName || ""
-          }\nНомер медицинской карты: ${currentPatient?.medicalCardNumber || ""}`,
+          }\nНомер медицинской карты: ${
+            currentPatient?.medicalCardNumber || ""
+          }`,
           questionAnswersText,
         ].join("\n");
-  
+
         // Отправляем сообщение в бот
         await bot.sendMessage(chatId, text ? text : "Нет данных");
       }
-  }}
+    }
+  }
 });
 
 bot.on("callback_query", async (callbackQuery) => {
@@ -1207,7 +1244,7 @@ bot.on("callback_query", async (callbackQuery) => {
               },
             ],
           ],
-        }
+        },
       });
       return;
     }
@@ -1597,15 +1634,14 @@ bot.on("callback_query", async (callbackQuery) => {
                 bot.once("message", async (lastNameMsg) => {
                   const lastname = lastNameMsg.text;
 
-                  if (lastname) {                   
-
+                  if (lastname) {
                     try {
                       const response = await invitePatient(token as string, {
                         medicalCardNumber,
                         email,
                         firstname,
                         lastname,
-                      });                      
+                      });
 
                       if (response.status !== 400) {
                         await bot.sendMessage(
@@ -1641,36 +1677,39 @@ bot.on("callback_query", async (callbackQuery) => {
                           }
                         );
                       }
-                    } catch (error: any) {        
-                      
-                      await bot.sendMessage(chatId, `Пользователь с таким email уже существует.`, {
-                        reply_markup: {
-                          inline_keyboard: [
-                            [
-                              {
-                                text: "Список пациентов",
-                                callback_data: "list_of_patients",
-                              },
+                    } catch (error: any) {
+                      await bot.sendMessage(
+                        chatId,
+                        `Пользователь с таким email уже существует.`,
+                        {
+                          reply_markup: {
+                            inline_keyboard: [
+                              [
+                                {
+                                  text: "Список пациентов",
+                                  callback_data: "list_of_patients",
+                                },
+                              ],
+                              [
+                                {
+                                  text: "Пригласить пациента",
+                                  callback_data: "add_patient",
+                                },
+                              ],
+                              [
+                                {
+                                  text: "Новые уведомления",
+                                  callback_data: "my_notifications",
+                                },
+                                {
+                                  text: "Все уведомления",
+                                  callback_data: "old_notifications",
+                                },
+                              ],
                             ],
-                            [
-                              {
-                                text: "Пригласить пациента",
-                                callback_data: "add_patient",
-                              },
-                            ],
-                            [
-                              {
-                                text: "Новые уведомления",
-                                callback_data: "my_notifications",
-                              },
-                              {
-                                text: "Все уведомления",
-                                callback_data: "old_notifications",
-                              },
-                            ],
-                          ],
-                        },
-                      });
+                          },
+                        }
+                      );
                     }
                   }
                 });
