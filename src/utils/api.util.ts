@@ -1151,6 +1151,9 @@ export const selfSignDoctor = async (email: string, password: string) => {
 
     const hash = selfSignUpResponse.data.data.doctorSelfEmailSignUp.hash;
 
+    console.log(selfSignUpResponse.data);
+    console.log(hash);
+
     // Вторая мутация: завершение регистрации
     const signUpResponse = await axios.post(
       GRAPHQL_ENDPOINT as string,
@@ -1186,6 +1189,8 @@ export const selfSignDoctor = async (email: string, password: string) => {
         },
       }
     );
+
+    console.log(signUpResponse.data);
 
     return signUpResponse.data;
   } catch (error) {
