@@ -422,7 +422,7 @@ bot.on("callback_query", async (callbackQuery: any) => {
           if (password) {
             try{
               const response = await selfSignDoctor(email, password)
-              if(response?.problem){
+              if(!response?.problem){
                 await bot.sendMessage(chatId, 'Регистрация успешно пройдена. Добро пожаловать!', doctorMenu)
               } else {
                 await bot.sendMessage(chatId, 'Что-то пошло не так... Попробуйте пройти регистрацию еще раз позже.')
