@@ -1150,6 +1150,7 @@ export const selfSignDoctor = async (email: string, password: string) => {
     );
 
     const hash = selfSignUpResponse.data?.data?.doctorSelfEmailSignUp?.hash;
+    return hash
 
     // Вторая мутация: завершение регистрации
     if (hash) {
