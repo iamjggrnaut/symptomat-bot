@@ -1152,10 +1152,12 @@ export const selfSignDoctor = async (email: string, password: string) => {
     const hash = selfSignUpResponse.data?.data?.doctorSelfEmailSignUp?.hash;
 
     // Вторая мутация: завершение регистрации
-    const signUpResponse = await axios.post(
-      GRAPHQL_ENDPOINT as string,
-      {
-        query: `
+    if (hash) {
+      // Вторая мутация: завершение регистрации
+      const signUpResponse = await axios.post(
+        GRAPHQL_ENDPOINT as string,
+        {
+          query: `
             mutation DoctorEmailSignUp($input: DoctorEmailSignUpInput!) {
               doctorEmailSignUp(input: $input) {
                 refreshToken
@@ -1173,21 +1175,24 @@ export const selfSignDoctor = async (email: string, password: string) => {
               }
             }
           `,
-        variables: {
-          input: {
-            hash: hash,
-            password: password,
+          variables: {
+            input: {
+              hash: hash,
+              password: password,
+            },
           },
         },
-      },
-      {
-        headers: {
-          // Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+        {
+          headers: {
+            // Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    return signUpResponse.data;
+      return signUpResponse.data;
+    } else {
+      throw new Error("Hash не был получен от сервера.");
+    }
   } catch (error) {
     console.error("Ошибка при выполнении запроса:", error);
     throw error;
