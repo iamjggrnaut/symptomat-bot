@@ -1061,3 +1061,128 @@ export const fetchAllQuestionAnswers = async (
     throw error;
   }
 };
+
+export const selfSignPatient = async (email: string, firstname: string, lastname: string, medicalCardNumber: string, password: string) => {
+    try {
+      const response = await axios.post(
+        GRAPHQL_ENDPOINT as string,
+        {
+          query: `
+            mutation PatientSelfCreate($input: PatientSelfCreateInput!) {
+              patientSelfCreate(input: $input) {
+                password
+                problem {
+                  __typename
+                  ... on ExistEmailProblem {
+                    message
+                  }
+                  ... on TooManyRequestsProblem {
+                    message
+                  }
+                }
+              }
+            }
+          `,
+          variables: {
+            input: {
+              email: email,
+              firstname: firstname,
+              lastname: lastname,
+              medicalCardNumber: medicalCardNumber,
+              password: password
+            }
+          },
+        },
+        {
+          headers: {
+            // Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+  
+      return response.data;
+    } catch (error) {
+      console.error("Ошибка при выполнении запроса:", error);
+      throw error;
+    }
+  };
+
+  export const selfSignDoctor = async (email: string, password: string) => {
+    try {
+      // Первая мутация: отправка кода на email
+      const selfSignUpResponse = await axios.post(
+        GRAPHQL_ENDPOINT as string,
+        {
+          query: `
+            mutation DoctorSelfEmailSignUp($input: DoctorEmailSignUpSendLinkInput!) {
+              doctorSelfEmailSignUp(input: $input) {
+                hash
+                problem {
+                  __typename
+                  ... on ExistEmailProblem {
+                    message
+                  }
+                  ... on TooManyRequestsProblem {
+                    message
+                  }
+                }
+              }
+            }
+          `,
+          variables: {
+            input: {
+              email: email,
+            },
+          },
+        },
+        {
+          headers: {
+            // Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+  
+      const hash = selfSignUpResponse.data.data.doctorSelfEmailSignUp.hash;
+  
+      // Вторая мутация: завершение регистрации
+      const signUpResponse = await axios.post(
+        GRAPHQL_ENDPOINT as string,
+        {
+          query: `
+            mutation DoctorEmailSignUp($input: DoctorEmailSignUpInput!) {
+              doctorEmailSignUp(input: $input) {
+                refreshToken
+                token
+                user {
+                  id
+                  email
+                }
+                problem {
+                  __typename
+                  ... on InvalidVerificationEmailHashProblem {
+                    message
+                  }
+                }
+              }
+            }
+          `,
+          variables: {
+            input: {
+              hash: hash,
+              password: password,
+            },
+          },
+        },
+        {
+          headers: {
+            // Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+  
+      return signUpResponse.data;
+    } catch (error) {
+      console.error("Ошибка при выполнении запроса:", error);
+      throw error;
+    }
+  };
