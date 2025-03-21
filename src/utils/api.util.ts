@@ -1115,26 +1115,21 @@ export const selfSignPatient = async (
 
 export const selfSignDoctor = async (email: string, password: string) => {
   try {
-    // Первая мутация: отправка кода на email
     const selfSignUpResponse = await axios.post(
       GRAPHQL_ENDPOINT as string,
       {
         query: `
-            mutation DoctorSelfEmailSignUp($input: DoctorEmailSignUpSendLinkInput!) {
-              doctorSelfEmailSignUp(input: $input) {
-                hash
-                problem {
-                  __typename
-                  ... on ExistEmailProblem {
-                    message
-                  }
-                  ... on TooManyRequestsProblem {
-                    message
-                  }
-                }
+          mutation DoctorSignUp($input: DoctorSignUpInput!) {
+            doctorSignUp(input: $input) {
+              user {
+                id
+                email
               }
+              token
+              refreshToken
             }
-          `,
+          }
+        `,
         variables: {
           input: {
             email: email,
@@ -1149,50 +1144,8 @@ export const selfSignDoctor = async (email: string, password: string) => {
       }
     );
 
-    const hash = selfSignUpResponse.data?.data?.doctorSelfEmailSignUp?.hash;
-
-    // Вторая мутация: завершение регистрации
-    if (hash) {
-      // Вторая мутация: завершение регистрации
-      const signUpResponse = await axios.post(
-        GRAPHQL_ENDPOINT as string,
-        {
-          query: `
-            mutation DoctorEmailSignUp($input: DoctorEmailSignUpInput!) {
-              doctorEmailSignUp(input: $input) {
-                refreshToken
-                token
-                user {
-                  id
-                  email
-                }
-                problem {
-                  __typename
-                  ... on InvalidVerificationEmailHashProblem {
-                    message
-                  }
-                }
-              }
-            }
-          `,
-          variables: {
-            input: {
-              hash: hash,
-              password: password,
-            },
-          },
-        },
-        {
-          headers: {
-            // Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      return signUpResponse.data;
-    } else {
-      throw new Error("Hash не был получен от сервера.");
-    }
+      return selfSignUpResponse.data
+    
   } catch (error) {
     console.error("Ошибка при выполнении запроса:", error);
     throw error;
