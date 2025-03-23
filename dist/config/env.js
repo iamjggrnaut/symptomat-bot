@@ -33,8 +33,9 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GRAPHQL_ENDPOINT = exports.TELEGRAM_BOT_TOKEN = void 0;
+exports.AUTH_SERVICE = exports.GRAPHQL_ENDPOINT = exports.TELEGRAM_BOT_TOKEN = void 0;
 const dotenv = __importStar(require("dotenv"));
 dotenv.config();
 exports.TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 exports.GRAPHQL_ENDPOINT = process.env.GRAPHQL_ENDPOINT;
+exports.AUTH_SERVICE = process.env.AUTH_SERVICE;

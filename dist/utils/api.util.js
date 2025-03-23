@@ -3,51 +3,189 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchAllQuestionAnswers = exports.getQuestionAnswers = exports.getMyDoc = exports.contactMeRequest = exports.sendSurveyAnswers = exports.myActiveSurveys = exports.invitePatient = exports.sendSurveyToPatient = exports.fetchQuestionsByDrug = exports.fetchDrugs = exports.fetchOneSurveyAnswers = exports.fetchPatientSurveys = exports.fetchPatientNotifications = exports.fetchDoctorNotifications = exports.searchPatients = exports.getHospitalPatients = exports.loginPatient = exports.loginDoctor = void 0;
+exports.fetchAllQuestionAnswers = exports.getQuestionAnswers = exports.getMyDoc = exports.contactMeRequest = exports.sendSurveyAnswers = exports.myActiveSurveys = exports.invitePatient = exports.sendSurveyToPatient = exports.fetchQuestionsByDrug = exports.fetchDrugs = exports.fetchOneSurveyAnswers = exports.fetchPatientSurveys = exports.fetchPatientNotifications = exports.fetchDoctorNotifications = exports.searchPatients = exports.getHospitalPatients = exports.loginPatient = exports.loginDoctor = exports.signUpPatient = exports.assignPatientToDoctor = exports.findPatientByEmail = exports.signUpDoctor = void 0;
 const axios_1 = __importDefault(require("axios"));
 const env_1 = require("../config/env");
-const userSessions = new Map();
-const loginDoctor = async (email, password) => {
-    const response = await axios_1.default.post(env_1.GRAPHQL_ENDPOINT, {
-        query: `
-      mutation DoctorEmailSignIn($input: DoctorEmailSignInInput!) {
-        doctorEmailSignIn(input: $input) {
-          token
-          user {
-            id
-            email
-            role
-          }
+const env_2 = require("../config/env");
+const signUpDoctor = async (email, password) => {
+    try {
+        const response = await fetch(`${env_2.AUTH_SERVICE}/doctors/register`, {
+            body: JSON.stringify({ email, password }),
+            headers: {
+                'content-type': 'application/json',
+            },
+            method: 'POST'
+        });
+        if (!response.ok) {
+            const errorText = await response.text(); // Читаем текст ошибки
+            console.error('Ошибка при запросе:', errorText);
+            throw new Error(`Ошибка: ${response.status} - ${errorText}`);
         }
-      }
-    `,
-        variables: {
-            input: { email, password },
-        },
-    });
-    return response.data.data.doctorEmailSignIn;
+        const data = await response.json();
+        return data;
+    }
+    catch (error) {
+        console.error('Ошибка в register Doctor:', error);
+        throw error;
+    }
+};
+exports.signUpDoctor = signUpDoctor;
+const findPatientByEmail = async (email, token) => {
+    try {
+        const response = await fetch(`${env_2.AUTH_SERVICE}/doctors/find-patient`, {
+            body: JSON.stringify({ email }),
+            headers: {
+                'content-type': 'application/json',
+                'authorization': 'Bearer ' + token
+            },
+            method: 'POST'
+        });
+        if (!response.ok) {
+            const errorText = await response.text(); // Читаем текст ошибки
+            console.error('Ошибка при запросе:', errorText);
+            throw new Error(`Ошибка: ${response.status} - ${errorText}`);
+        }
+        const data = await response.json();
+        return data;
+    }
+    catch (error) {
+        console.error('Ошибка в register Doctor:', error);
+        throw error;
+    }
+};
+exports.findPatientByEmail = findPatientByEmail;
+const assignPatientToDoctor = async (patientId, doctorId, token) => {
+    try {
+        const response = await fetch(`${env_2.AUTH_SERVICE}/doctors/assign-patient`, {
+            body: JSON.stringify({ patientId, doctorId }),
+            headers: {
+                'content-type': 'application/json',
+                'authorization': 'Bearer ' + token
+            },
+            method: 'POST'
+        });
+        if (!response.ok) {
+            const errorText = await response.text(); // Читаем текст ошибки
+            console.error('Ошибка при запросе:', errorText);
+            throw new Error(`Ошибка: ${response.status} - ${errorText}`);
+        }
+        const data = await response.json();
+        return data;
+    }
+    catch (error) {
+        console.error('Ошибка в assign patient:', error);
+        throw error;
+    }
+};
+exports.assignPatientToDoctor = assignPatientToDoctor;
+const signUpPatient = async (email, firstName, lastName, medicalCardNumber, password) => {
+    try {
+        const response = await fetch(`${env_2.AUTH_SERVICE}/patients/register`, {
+            body: JSON.stringify({ email, firstName, lastName, medicalCardNumber, password }),
+            headers: {
+                'content-type': 'application/json',
+            },
+            method: 'POST'
+        });
+        if (!response.ok) {
+            const errorText = await response.text(); // Читаем текст ошибки
+            console.error('Ошибка при запросе:', errorText);
+            throw new Error(`Ошибка: ${response.status} - ${errorText}`);
+        }
+        const data = await response.json();
+        return data;
+    }
+    catch (error) {
+        console.error('Ошибка в register Patient:', error);
+        throw error;
+    }
+};
+exports.signUpPatient = signUpPatient;
+// export const loginDoctor = async (email: string, password: string) => {
+//   const response = await axios.post(GRAPHQL_ENDPOINT as string, {
+//     query: `
+//       mutation DoctorEmailSignIn($input: DoctorEmailSignInInput!) {
+//         doctorEmailSignIn(input: $input) {
+//           token
+//           user {
+//             id
+//             email
+//             role
+//           }
+//         }
+//       }
+//     `,
+//     variables: {
+//       input: { email, password },
+//     },
+//   });
+//   return response.data.data.doctorEmailSignIn;
+// };
+const loginDoctor = async (email, password) => {
+    try {
+        const response = await fetch(`${env_2.AUTH_SERVICE}/doctors/login`, {
+            body: JSON.stringify({ email, password }),
+            headers: {
+                'content-type': 'application/json',
+            },
+            method: 'POST'
+        });
+        if (!response.ok) {
+            const errorText = await response.text(); // Читаем текст ошибки
+            console.error('Ошибка при запросе:', errorText);
+            throw new Error(`Ошибка: ${response.status} - ${errorText}`);
+        }
+        const data = await response.json();
+        return data;
+    }
+    catch (error) {
+        console.error('Ошибка в loginDoctor:', error);
+        throw error;
+    }
 };
 exports.loginDoctor = loginDoctor;
+// export const loginPatient = async (email: string, password: string) => {
+//   const response = await axios.post(GRAPHQL_ENDPOINT as string, {
+//     query: `
+//       mutation PatientEmailSignIn($input: PatientEmailSignInInput!) {
+//         patientEmailSignIn(input: $input) {
+//           token
+//           refreshToken
+//           user {
+//             id
+//             email
+//             role
+//           }
+//         }
+//       }
+//     `,
+//     variables: {
+//       input: { email, password },
+//     },
+//   });
+//   return response.data.data.patientEmailSignIn;
+// };
 const loginPatient = async (email, password) => {
-    const response = await axios_1.default.post(env_1.GRAPHQL_ENDPOINT, {
-        query: `
-      mutation PatientEmailSignIn($input: PatientEmailSignInInput!) {
-        patientEmailSignIn(input: $input) {
-          token
-          refreshToken
-          user {
-            id
-            email
-            role
-          }
+    try {
+        const response = await fetch(`${env_2.AUTH_SERVICE}/patients/login`, {
+            body: JSON.stringify({ email, password }),
+            headers: {
+                'content-type': 'application/json',
+            },
+            method: 'POST'
+        });
+        if (!response.ok) {
+            const errorText = await response.text(); // Читаем текст ошибки
+            console.error('Ошибка при запросе:', errorText);
+            throw new Error(`Ошибка: ${response.status} - ${errorText}`);
         }
-      }
-    `,
-        variables: {
-            input: { email, password },
-        },
-    });
-    return response.data.data.patientEmailSignIn;
+        const data = await response.json();
+        return data;
+    }
+    catch (error) {
+        console.error('Ошибка в loginDoctor:', error);
+        throw error;
+    }
 };
 exports.loginPatient = loginPatient;
 const getHospitalPatients = async (doctorId, token) => {

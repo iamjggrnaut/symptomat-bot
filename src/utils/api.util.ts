@@ -1,54 +1,203 @@
 import axios from "axios";
 import { GRAPHQL_ENDPOINT } from "../config/env";
+import {AUTH_SERVICE} from '../config/env'
 import TelegramBot from "node-telegram-bot-api";
 import {
   GetQuestionAnswersResponse,
   GetQuestionAnswersVariables,
 } from "./types";
 
-const userSessions = new Map<number, string>();
+export const signUpDoctor = async (email: string, password: string) => {
+ 
+  try{
+    const response = await fetch(`${AUTH_SERVICE}/doctors/register`, {
+      body: JSON.stringify({email, password}),
+      headers: {
+        'content-type': 'application/json',
+      },
+      method: 'POST'
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text(); // Читаем текст ошибки
+      console.error('Ошибка при запросе:', errorText);
+      throw new Error(`Ошибка: ${response.status} - ${errorText}`);
+    }
 
-export const loginDoctor = async (email: string, password: string) => {
-  const response = await axios.post(GRAPHQL_ENDPOINT as string, {
-    query: `
-      mutation DoctorEmailSignIn($input: DoctorEmailSignInInput!) {
-        doctorEmailSignIn(input: $input) {
-          token
-          user {
-            id
-            email
-            role
-          }
-        }
-      }
-    `,
-    variables: {
-      input: { email, password },
-    },
-  });
-  return response.data.data.doctorEmailSignIn;
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Ошибка в register Doctor:', error);
+    throw error;
+  }
 };
 
+export const findPatientByEmail = async (email: string, token: string) => {
+ 
+  try{
+    const response = await fetch(`${AUTH_SERVICE}/doctors/find-patient`, {
+      body: JSON.stringify({email}),
+      headers: {
+        'content-type': 'application/json',
+        'authorization': 'Bearer ' + token
+      },
+      method: 'POST'
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text(); // Читаем текст ошибки
+      console.error('Ошибка при запросе:', errorText);
+      throw new Error(`Ошибка: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Ошибка в register Doctor:', error);
+    throw error;
+  }
+};
+
+export const assignPatientToDoctor = async (patientId: string, doctorId: string, token: string) => {
+ 
+  try{
+    const response = await fetch(`${AUTH_SERVICE}/doctors/assign-patient`, {
+      body: JSON.stringify({patientId, doctorId}),
+      headers: {
+        'content-type': 'application/json',
+        'authorization': 'Bearer ' + token
+      },
+      method: 'POST'
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text(); // Читаем текст ошибки
+      console.error('Ошибка при запросе:', errorText);
+      throw new Error(`Ошибка: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Ошибка в assign patient:', error);
+    throw error;
+  }
+};
+
+export const signUpPatient = async (email: string, firstName: string, lastName: string, medicalCardNumber: string, password: string) => {
+ 
+  try{
+    const response = await fetch(`${AUTH_SERVICE}/patients/register`, {
+      body: JSON.stringify({email, firstName, lastName, medicalCardNumber, password}),
+      headers: {
+        'content-type': 'application/json',
+      },
+      method: 'POST'
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text(); // Читаем текст ошибки
+      console.error('Ошибка при запросе:', errorText);
+      throw new Error(`Ошибка: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Ошибка в register Patient:', error);
+    throw error;
+  }
+};
+
+// export const loginDoctor = async (email: string, password: string) => {
+//   const response = await axios.post(GRAPHQL_ENDPOINT as string, {
+//     query: `
+//       mutation DoctorEmailSignIn($input: DoctorEmailSignInInput!) {
+//         doctorEmailSignIn(input: $input) {
+//           token
+//           user {
+//             id
+//             email
+//             role
+//           }
+//         }
+//       }
+//     `,
+//     variables: {
+//       input: { email, password },
+//     },
+//   });
+//   return response.data.data.doctorEmailSignIn;
+// };
+export const loginDoctor = async (email: string, password: string) => {
+ 
+  try{
+    const response = await fetch(`${AUTH_SERVICE}/doctors/login`, {
+      body: JSON.stringify({email, password}),
+      headers: {
+        'content-type': 'application/json',
+      },
+      method: 'POST'
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text(); // Читаем текст ошибки
+      console.error('Ошибка при запросе:', errorText);
+      throw new Error(`Ошибка: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Ошибка в loginDoctor:', error);
+    throw error;
+  }
+};
+
+// export const loginPatient = async (email: string, password: string) => {
+//   const response = await axios.post(GRAPHQL_ENDPOINT as string, {
+//     query: `
+//       mutation PatientEmailSignIn($input: PatientEmailSignInInput!) {
+//         patientEmailSignIn(input: $input) {
+//           token
+//           refreshToken
+//           user {
+//             id
+//             email
+//             role
+//           }
+//         }
+//       }
+//     `,
+//     variables: {
+//       input: { email, password },
+//     },
+//   });
+//   return response.data.data.patientEmailSignIn;
+// };
+
 export const loginPatient = async (email: string, password: string) => {
-  const response = await axios.post(GRAPHQL_ENDPOINT as string, {
-    query: `
-      mutation PatientEmailSignIn($input: PatientEmailSignInInput!) {
-        patientEmailSignIn(input: $input) {
-          token
-          refreshToken
-          user {
-            id
-            email
-            role
-          }
-        }
-      }
-    `,
-    variables: {
-      input: { email, password },
-    },
-  });
-  return response.data.data.patientEmailSignIn;
+  try{
+    const response = await fetch(`${AUTH_SERVICE}/patients/login`, {
+      body: JSON.stringify({email, password}),
+      headers: {
+        'content-type': 'application/json',
+      },
+      method: 'POST'
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text(); // Читаем текст ошибки
+      console.error('Ошибка при запросе:', errorText);
+      throw new Error(`Ошибка: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Ошибка в loginDoctor:', error);
+    throw error; 
+  }
 };
 
 export const getHospitalPatients = async (doctorId: string, token: string) => {
@@ -1062,92 +1211,3 @@ export const fetchAllQuestionAnswers = async (
   }
 };
 
-export const selfSignPatient = async (
-  email: string,
-  firstname: string,
-  lastname: string,
-  medicalCardNumber: string,
-  password: string
-) => {
-  try {
-    const response = await axios.post(
-      GRAPHQL_ENDPOINT as string,
-      {
-        query: `
-            mutation PatientSelfCreate($input: PatientSelfCreateInput!) {
-              patientSelfCreate(input: $input) {
-                password
-                problem {
-                  __typename
-                  ... on ExistEmailProblem {
-                    message
-                  }
-                  ... on TooManyRequestsProblem {
-                    message
-                  }
-                }
-              }
-            }
-          `,
-        variables: {
-          input: {
-            email: email,
-            firstname: firstname,
-            lastname: lastname,
-            medicalCardNumber: medicalCardNumber,
-            password: password,
-          },
-        },
-      },
-      {
-        headers: {
-          // Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    return response.data;
-  } catch (error) {
-    console.error("Ошибка при выполнении запроса:", error);
-    throw error;
-  }
-};
-
-export const selfSignDoctor = async (email: string, password: string) => {
-  try {
-    const selfSignUpResponse = await axios.post(
-      GRAPHQL_ENDPOINT as string,
-      {
-        query: `
-          mutation DoctorSignUp($input: DoctorSignUpInput!) {
-            doctorSignUp(input: $input) {
-              user {
-                id
-                email
-              }
-              token
-              refreshToken
-            }
-          }
-        `,
-        variables: {
-          input: {
-            email: email,
-            password: password,
-          },
-        },
-      },
-      {
-        headers: {
-          // Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-      return selfSignUpResponse.data
-    
-  } catch (error) {
-    console.error("Ошибка при выполнении запроса:", error);
-    throw error;
-  }
-};
