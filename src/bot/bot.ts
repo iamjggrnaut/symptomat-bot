@@ -1533,7 +1533,7 @@ bot.on("callback_query", async (callbackQuery: any) => {
 
     if (myDoc && myDoc.length > 0) {
       try {
-        doctorId.set(chatId, myDoc[0].doctorId);
+        doctorId.set(chatId, myDoc[0]?.doctorId);
 
         bot.once("message", async (message) => {
           const text = message.text;
