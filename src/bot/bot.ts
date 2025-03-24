@@ -1185,7 +1185,7 @@ bot.on("callback_query", async (callbackQuery) => {
 
     const variables: GetQuestionAnswersVariables = {
       patientId: patientId,
-      questionId: anotherSurvey[0].questionId,
+      questionId: anotherSurvey[0]?.questionId,
       take: 5,
     };
 
