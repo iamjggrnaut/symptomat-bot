@@ -376,6 +376,7 @@ bot.on("callback_query", async (callbackQuery) => {
                                                     if (response?.accessToken) {
                                                         auth_handler_2.userSessions.set(chatId, response.accessToken);
                                                     }
+                                                    console.log(response);
                                                     if (response.status !== 400) {
                                                         await bot.sendMessage(chatId, 'Регистрация успешно пройдена. Добро пожаловать!', patientMenu);
                                                     }
@@ -384,7 +385,20 @@ bot.on("callback_query", async (callbackQuery) => {
                                                     }
                                                 }
                                                 catch (error) {
-                                                    throw error;
+                                                    await bot.sendMessage(chatId, 'Пользователь с таким email уже существует! Попробуйте снова и используйте другой email.', {
+                                                        reply_markup: {
+                                                            inline_keyboard: [
+                                                                [{
+                                                                        text: 'Пациент',
+                                                                        callback_data: 'signup-patient'
+                                                                    }],
+                                                                [{
+                                                                        text: 'Доктор',
+                                                                        callback_data: 'signup-doctor'
+                                                                    }],
+                                                            ]
+                                                        }
+                                                    });
                                                 }
                                             }
                                         });
@@ -429,7 +443,20 @@ bot.on("callback_query", async (callbackQuery) => {
                             }
                         }
                         catch (error) {
-                            throw error;
+                            await bot.sendMessage(chatId, 'Пользователь с таким email уже существует! Попробуйте снова и используйте другой email.', {
+                                reply_markup: {
+                                    inline_keyboard: [
+                                        [{
+                                                text: 'Пациент',
+                                                callback_data: 'signup-patient'
+                                            }],
+                                        [{
+                                                text: 'Доктор',
+                                                callback_data: 'signup-doctor'
+                                            }],
+                                    ]
+                                }
+                            });
                         }
                     }
                 });
@@ -1003,7 +1030,7 @@ bot.on("callback_query", async (callbackQuery) => {
             return;
         }
         let anotherSurvey = await (0, api_util_1.fetchOneSurveyAnswers)(patientId, templateId, token);
-        console.log(JSON.stringify(anotherSurvey));
+        // console.log(JSON.stringify(anotherSurvey));
         const variables = {
             patientId: patientId,
             questionId: anotherSurvey[0]?.questionId,
@@ -1018,7 +1045,7 @@ bot.on("callback_query", async (callbackQuery) => {
         });
         if (anotherSurvey) {
             const allQuestionAnswers = await (0, api_util_1.fetchAllQuestionAnswers)(patientId, token, anotherSurvey);
-            console.log(JSON.stringify(allQuestionAnswers));
+            // console.log(JSON.stringify(allQuestionAnswers));
             if (allQuestionAnswers) {
                 let questionAnswersText = allQuestionAnswers.map((item) => `
 Вопрос: ${item.questionTitle}

@@ -506,13 +506,28 @@ bot.on("callback_query", async (callbackQuery: any) => {
                           if (response?.accessToken) {
                             userSessions.set(chatId, response.accessToken);
                           }
+                          console.log(response);
                           if(response.status !== 400){
+                            
                             await bot.sendMessage(chatId, 'Регистрация успешно пройдена. Добро пожаловать!', patientMenu)
                           } else {
                             await bot.sendMessage(chatId, 'Что-то пошло не так... Попробуйте пройти регистрацию еще раз позже.')
                           }
                         }catch(error){
-                          throw error
+                          await bot.sendMessage(chatId, 'Пользователь с таким email уже существует! Попробуйте снова и используйте другой email.',  {
+                            reply_markup: {
+                              inline_keyboard: [
+                                [{
+                                  text: 'Пациент',
+                                  callback_data: 'signup-patient'
+                                }],
+                                [{
+                                  text: 'Доктор',
+                                  callback_data: 'signup-doctor'
+                                }],
+                              ]
+                            }
+                          })
                         }
                       }
                     })
@@ -562,7 +577,20 @@ bot.on("callback_query", async (callbackQuery: any) => {
                 await bot.sendMessage(chatId, 'Что-то пошло не так... Попробуйте пройти регистрацию еще раз позже.')
               }
             } catch(error){
-              throw error
+              await bot.sendMessage(chatId, 'Пользователь с таким email уже существует! Попробуйте снова и используйте другой email.',  {
+                reply_markup: {
+                  inline_keyboard: [
+                    [{
+                      text: 'Пациент',
+                      callback_data: 'signup-patient'
+                    }],
+                    [{
+                      text: 'Доктор',
+                      callback_data: 'signup-doctor'
+                    }],
+                  ]
+                }
+              })
             }
           }
         })
