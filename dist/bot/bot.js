@@ -81,6 +81,7 @@ exports.doctorId = new Map();
 exports.currentPatients = new Map();
 exports.surveyAnswers = new Map();
 exports.activeSurvey = new Map();
+const currentQuestion = new Map();
 const userState = new Map();
 const createSurveyData = new Map();
 const generateKey = () => Math.random().toString(36).substring(2, 10);
@@ -158,6 +159,7 @@ const showDrugsPage = async (chatId, page) => {
     });
 };
 async function askQuestion(chatId, questions, questionIndex) {
+    currentQuestion.set(chatId, questionIndex);
     const question = questions[questionIndex]?.question;
     if (!question) {
         await bot.sendMessage(chatId, "Ошибка: вопрос не найден.");
@@ -187,16 +189,90 @@ async function askQuestion(chatId, questions, questionIndex) {
         case "TEMPERATURE":
         case "WEIGHT":
         case "PULSE":
-        case "PRESSURE":
             await bot.sendMessage(chatId, `${question.title}\n\nПожалуйста, введите числовое значение:`);
+            break;
+        case "PRESSURE":
+            await bot.sendMessage(chatId, `${question.title}\n\nПожалуйста, введите давление в формате "120/80":`);
             break;
         default:
             await bot.sendMessage(chatId, "Ошибка: неизвестный тип вопроса.");
             break;
     }
 }
+bot.on("message", async (msg) => {
+    const chatId = msg.chat.id;
+    const text = msg.text;
+    // Проверяем, что пользователь в процессе опроса
+    const userSurvey = exports.surveyAnswers.get(chatId);
+    if (!userSurvey || !userSurvey.questions)
+        return;
+    // Получаем текущий вопрос
+    const currentQIndex = currentQuestion.get(chatId);
+    if (currentQIndex === undefined)
+        return;
+    const question = userSurvey.questions[currentQIndex]?.question;
+    if (!question)
+        return;
+    // Обработка в зависимости от типа вопроса
+    switch (question.type) {
+        case "NUMERIC":
+        case "SCALE":
+        case "TEMPERATURE":
+        case "WEIGHT":
+        case "PULSE":
+            const numericValue = parseFloat(text);
+            if (isNaN(numericValue)) {
+                await bot.sendMessage(chatId, "Пожалуйста, введите корректное числовое значение.");
+                return;
+            }
+            userSurvey.answers.push({
+                questionId: question.id,
+                questionType: question.type,
+                answerValue: {
+                    numeric: { value: numericValue },
+                },
+            });
+            break;
+        case "PRESSURE":
+            // Улучшенная проверка формата давления
+            if (!text || !text.includes("/")) {
+                await bot.sendMessage(chatId, "Пожалуйста, введите давление в формате '120/80' (например: 120/80).");
+                return;
+            }
+            const parts = text.split("/");
+            if (parts.length !== 2) {
+                await bot.sendMessage(chatId, "Неверный формат. Пожалуйста, введите давление в формате '120/80'.");
+                return;
+            }
+            const lowerValue = parseInt(parts[0], 10);
+            const upperValue = parseInt(parts[1], 10);
+            if (isNaN(lowerValue) || isNaN(upperValue)) {
+                await bot.sendMessage(chatId, "Пожалуйста, введите числовые значения для давления (например: 120/80).");
+                return;
+            }
+            userSurvey.answers.push({
+                questionId: question.id,
+                questionType: question.type,
+                answerValue: {
+                    pressure: { lowerValue, upperValue },
+                },
+            });
+            break;
+        default:
+            await bot.sendMessage(chatId, "Неизвестный тип вопроса.");
+            return;
+    }
+    // Переход к следующему вопросу или завершение опроса
+    if (currentQIndex + 1 < userSurvey.questions.length) {
+        await askQuestion(chatId, userSurvey.questions, currentQIndex + 1);
+    }
+    else {
+        await completeSurvey(chatId, userSurvey);
+    }
+});
 async function completeSurvey(chatId, userSurvey) {
     const token = auth_handler_2.userSessions.get(chatId);
+    console.log('Complete survey - survey: ', JSON.stringify(userSurvey));
     try {
         console.log("Отправка ответов на сервер:", JSON.stringify(userSurvey, null, 2));
         const response = await (0, api_util_1.sendSurveyAnswers)(token, {
@@ -930,7 +1006,7 @@ bot.on("callback_query", async (callbackQuery) => {
         console.log(JSON.stringify(anotherSurvey));
         const variables = {
             patientId: patientId,
-            questionId: anotherSurvey[0].questionId,
+            questionId: anotherSurvey[0]?.questionId,
             take: 5,
         };
         (0, api_util_1.getQuestionAnswers)(token, variables)
@@ -942,14 +1018,25 @@ bot.on("callback_query", async (callbackQuery) => {
         });
         if (anotherSurvey) {
             const allQuestionAnswers = await (0, api_util_1.fetchAllQuestionAnswers)(patientId, token, anotherSurvey);
-            console.log(allQuestionAnswers);
+            console.log(JSON.stringify(allQuestionAnswers));
             if (allQuestionAnswers) {
-                // Минимальный ответ: ${item.minAnswer}
-                // Максимальный ответ: ${item.maxAnswer}
                 let questionAnswersText = allQuestionAnswers.map((item) => `
 Вопрос: ${item.questionTitle}
 Ответы: 
-${item.answers.map((answer) => `${answer?.answerQuestionOption?.text} ${answer?.createdAt ? new Date(answer?.createdAt).toLocaleDateString("ru") : "Дата неизвестна"}`).join("\n")}
+${item.answers.map((answer) => {
+                    // Для вопросов с вариантами ответов (RADIO, CHECKBOX)
+                    if (answer.answerQuestionOption) {
+                        return `${answer.answerQuestionOption.text} ${answer?.createdAt ? new Date(answer?.createdAt).toLocaleDateString("ru") : "Дата неизвестна"}`;
+                    }
+                    // Для вопросов типа PRESSURE
+                    else if (answer.answerValue?.pressure) {
+                        return `${answer.answerValue.pressure.lowerValue}/${answer.answerValue.pressure.upperValue} ${answer?.createdAt ? new Date(answer?.createdAt).toLocaleDateString("ru") : "Дата неизвестна"}`;
+                    }
+                    // Для других типов вопросов
+                    else {
+                        return `Нет данных ${answer?.createdAt ? new Date(answer?.createdAt).toLocaleDateString("ru") : "Дата неизвестна"}`;
+                    }
+                }).join("\n")}
 ---`).join("\n");
                 let text = [`${title}\n${currentPatient?.firstName || ""} ${currentPatient?.lastName || ""}\nНомер медицинской карты: ${currentPatient?.medicalCardNumber || ""}`, questionAnswersText,].join("\n");
                 await bot.sendMessage(chatId, text ? text : "Нет данных");
@@ -1179,7 +1266,7 @@ bot.on("callback_query", async (callbackQuery) => {
         const myDoc = await (0, api_util_1.getMyDoc)(token);
         if (myDoc && myDoc.length > 0) {
             try {
-                exports.doctorId.set(chatId, myDoc[0].doctorId);
+                exports.doctorId.set(chatId, myDoc[0]?.doctorId);
                 bot.once("message", async (message) => {
                     const text = message.text;
                     exports.patientRequest.set(chatId, text);

@@ -120,6 +120,8 @@ export const surveyAnswers = new Map<
 >();
 export const activeSurvey = new Map<number, any>();
 
+const currentQuestion = new Map<number, number>();
+
 const userState = new Map<number, SurveyStep>();
 
 const createSurveyData = new Map<number, SurveyInput>();
@@ -211,6 +213,9 @@ async function askQuestion(
   questions: any[],
   questionIndex: number
 ) {
+
+  currentQuestion.set(chatId, questionIndex);
+  
   const question = questions[questionIndex]?.question;
 
   if (!question) {
@@ -245,10 +250,16 @@ async function askQuestion(
     case "TEMPERATURE":
     case "WEIGHT":
     case "PULSE":
-    case "PRESSURE":
       await bot.sendMessage(
         chatId,
         `${question.title}\n\nПожалуйста, введите числовое значение:`
+      );
+      break;
+
+    case "PRESSURE":
+      await bot.sendMessage(
+        chatId,
+        `${question.title}\n\nПожалуйста, введите давление в формате "120/80":`
       );
       break;
 
@@ -258,11 +269,106 @@ async function askQuestion(
   }
 }
 
+bot.on("message", async (msg) => {
+  const chatId = msg.chat.id;
+  const text = msg.text;
+  
+  // Проверяем, что пользователь в процессе опроса
+  const userSurvey = surveyAnswers.get(chatId);
+  if (!userSurvey || !userSurvey.questions) return;
+
+  // Получаем текущий вопрос
+  const currentQIndex = currentQuestion.get(chatId);
+  if (currentQIndex === undefined) return;
+  
+  const question = userSurvey.questions[currentQIndex]?.question;
+  if (!question) return;
+
+  // Обработка в зависимости от типа вопроса
+  switch (question.type) {
+    case "NUMERIC":
+    case "SCALE":
+    case "TEMPERATURE":
+    case "WEIGHT":
+    case "PULSE":
+      const numericValue = parseFloat(text as string);
+      if (isNaN(numericValue)) {
+        await bot.sendMessage(
+          chatId,
+          "Пожалуйста, введите корректное числовое значение."
+        );
+        return;
+      }
+
+      userSurvey.answers.push({
+        questionId: question.id,
+        questionType: question.type,
+        answerValue: {
+          numeric: { value: numericValue },
+        },
+      });
+      break;
+
+    case "PRESSURE":
+      // Улучшенная проверка формата давления
+      if (!text || !text.includes("/")) {
+        await bot.sendMessage(
+          chatId,
+          "Пожалуйста, введите давление в формате '120/80' (например: 120/80)."
+        );
+        return;
+      }
+
+      const parts = text.split("/");
+      if (parts.length !== 2) {
+        await bot.sendMessage(
+          chatId,
+          "Неверный формат. Пожалуйста, введите давление в формате '120/80'."
+        );
+        return;
+      }
+
+      const lowerValue = parseInt(parts[0], 10);
+      const upperValue = parseInt(parts[1], 10);
+
+      if (isNaN(lowerValue) || isNaN(upperValue)) {
+        await bot.sendMessage(
+          chatId,
+          "Пожалуйста, введите числовые значения для давления (например: 120/80)."
+        );
+        return;
+      }
+
+      userSurvey.answers.push({
+        questionId: question.id,
+        questionType: question.type,
+        answerValue: {
+          pressure: { lowerValue, upperValue },
+        },
+      });
+      break;
+
+    default:
+      await bot.sendMessage(chatId, "Неизвестный тип вопроса.");
+      return;
+  }
+
+  // Переход к следующему вопросу или завершение опроса
+  if (currentQIndex + 1 < userSurvey.questions.length) {
+    await askQuestion(chatId, userSurvey.questions, currentQIndex + 1);
+  } else {
+    await completeSurvey(chatId, userSurvey);
+  }
+});
+
 async function completeSurvey(
   chatId: number,
   userSurvey: { surveyId: string; answers: any[] }
 ) {
   const token = userSessions.get(chatId);
+
+  console.log('Complete survey - survey: ', JSON.stringify(userSurvey));
+  
 
   try {
     console.log(
@@ -1181,7 +1287,7 @@ bot.on("callback_query", async (callbackQuery) => {
       token as string
     );
 
-    console.log(JSON.stringify(anotherSurvey));
+    // console.log(JSON.stringify(anotherSurvey));
 
     const variables: GetQuestionAnswersVariables = {
       patientId: patientId,
@@ -1204,15 +1310,26 @@ bot.on("callback_query", async (callbackQuery) => {
         anotherSurvey
       );
 
-      console.log(allQuestionAnswers);
+      // console.log(JSON.stringify(allQuestionAnswers));
 
       if (allQuestionAnswers) {
-        // Минимальный ответ: ${item.minAnswer}
-        // Максимальный ответ: ${item.maxAnswer}
         let questionAnswersText = allQuestionAnswers.map((item: any) => `
 Вопрос: ${item.questionTitle}
 Ответы: 
-${item.answers.map((answer: any) =>`${answer?.answerQuestionOption?.text} ${answer?.createdAt ? new Date(answer?.createdAt).toLocaleDateString("ru") : "Дата неизвестна"}`).join("\n")}
+${item.answers.map((answer: any) => {
+  // Для вопросов с вариантами ответов (RADIO, CHECKBOX)
+  if (answer.answerQuestionOption) {
+    return `${answer.answerQuestionOption.text} ${answer?.createdAt ? new Date(answer?.createdAt).toLocaleDateString("ru") : "Дата неизвестна"}`;
+  } 
+  // Для вопросов типа PRESSURE
+  else if (answer.answerValue?.pressure) {
+    return `${answer.answerValue.pressure.lowerValue}/${answer.answerValue.pressure.upperValue} ${answer?.createdAt ? new Date(answer?.createdAt).toLocaleDateString("ru") : "Дата неизвестна"}`;
+  }
+  // Для других типов вопросов
+  else {
+    return `Нет данных ${answer?.createdAt ? new Date(answer?.createdAt).toLocaleDateString("ru") : "Дата неизвестна"}`;
+  }
+}).join("\n")}
 ---`).join("\n");
 
         let text = [`${title}\n${currentPatient?.firstName || ""} ${currentPatient?.lastName || ""}\nНомер медицинской карты: ${currentPatient?.medicalCardNumber || ""}`, questionAnswersText,].join("\n");
