@@ -1,17 +1,16 @@
 import axios from "axios";
 import { GRAPHQL_ENDPOINT } from "../config/env";
 import {AUTH_SERVICE} from '../config/env'
-import TelegramBot from "node-telegram-bot-api";
 import {
   GetQuestionAnswersResponse,
   GetQuestionAnswersVariables,
 } from "./types";
 
-export const signUpDoctor = async (email: string, password: string) => {
+export const signUpDoctor = async (email: string, password: string, tgChatId: number) => {
  
   try{
     const response = await fetch(`${AUTH_SERVICE}/doctors/register`, {
-      body: JSON.stringify({email, password}),
+      body: JSON.stringify({email, password, tgChatId}),
       headers: {
         'content-type': 'application/json',
       },
@@ -84,11 +83,11 @@ export const assignPatientToDoctor = async (patientId: string, doctorId: string,
   }
 };
 
-export const signUpPatient = async (email: string, firstName: string, lastName: string, medicalCardNumber: string, password: string) => {
+export const signUpPatient = async (email: string, firstName: string, lastName: string, medicalCardNumber: string, password: string, tgChatId: number) => {
  
   try{
     const response = await fetch(`${AUTH_SERVICE}/patients/register`, {
-      body: JSON.stringify({email, firstName, lastName, medicalCardNumber, password}),
+      body: JSON.stringify({email, firstName, lastName, medicalCardNumber, password, tgChatId}),
       headers: {
         'content-type': 'application/json',
       },

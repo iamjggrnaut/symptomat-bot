@@ -502,7 +502,7 @@ bot.on("callback_query", async (callbackQuery: any) => {
                       if (lastname) {
                         
                         try{
-                          const response = await signUpPatient(email, firstname, lastname, medicalCardNumber, password)
+                          const response = await signUpPatient(email, firstname, lastname, medicalCardNumber, password, chatId)
                           if (response?.accessToken) {
                             userSessions.set(chatId, response.accessToken);
                           }
@@ -553,7 +553,7 @@ bot.on("callback_query", async (callbackQuery: any) => {
 
           if (password) {
             try{
-              const response = await signUpDoctor(email, password)
+              const response = await signUpDoctor(email, password, chatId)
 
               if (response?.accessToken) {
                 userSessions.set(chatId, response.accessToken);
