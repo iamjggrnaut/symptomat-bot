@@ -410,6 +410,9 @@ async function completeSurvey(
 const fetchDrugsAndQuestions = async (token: string) => {
   const drugs = await fetchDrugs(token);
 
+  console.log(drugs);
+  
+
   for (const drug of drugs) {
     const questions = await fetchQuestionsByDrug(token, drug.id);
     drugsMap.set(drug.id, { ...drug, questions });
