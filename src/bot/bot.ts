@@ -386,7 +386,7 @@ async function completeSurvey(
     if (response.data?.data?.patientCompleteSurvey?.success) {
       await bot.sendMessage(
         chatId,
-        "Опрос успешно завершен. Спасибо за участие!",
+        "Опрос успешно завешен. Ваши данные доставлены врачу. Спасибо за участие!",
         patientMenu
       );
     } else {
@@ -400,7 +400,7 @@ async function completeSurvey(
     console.error("Ошибка при отправке ответов:", error.message);
     await bot.sendMessage(
       chatId,
-      "Опрос успешно завершен. Спасибо за участие!"
+      "Опрос успешно завешен. Ваши данные доставлены врачу. Спасибо за участие!"
     );
   } finally {
     surveyAnswers.delete(chatId);
@@ -479,13 +479,13 @@ bot.on("callback_query", async (callbackQuery: any) => {
       const email = emailMsg.text;
 
       if(email){
-        await bot.sendMessage(chatId, "Введите пароль");
+        await bot.sendMessage(chatId, "Введите пароль для бота");
 
         bot.once("message", async (pass) => {
           const password = pass.text;
 
           if (password) {
-            await bot.sendMessage(chatId, "Введите номер медицинской карты");
+            await bot.sendMessage(chatId, "Введите номер медицинской карты.\nЕсли не знаете номер своей карты, введите любое число");
     
             bot.once("message", async (cardMsg) => {
               const medicalCardNumber = cardMsg.text;
@@ -549,7 +549,7 @@ bot.on("callback_query", async (callbackQuery: any) => {
       const email = emailMsg.text;
 
       if (email) {
-        await bot.sendMessage(chatId, "Введите пароль");
+        await bot.sendMessage(chatId, "Введите пароль для бота");
 
         bot.once("message", async (cardMsg) => {
           const password = cardMsg.text;
@@ -962,7 +962,7 @@ bot.on("callback_query", async (callbackQuery) => {
         return;
       }
 
-      await bot.sendMessage(chatId, "Введите ваш пароль:");
+      await bot.sendMessage(chatId, "Введите пароль от бота:");
 
       bot.once("message", async (passwordMsg) => {
         const password = passwordMsg.text;
@@ -1024,7 +1024,7 @@ bot.on("callback_query", async (callbackQuery) => {
         );
         return;
       }
-      await bot.sendMessage(chatId, "Введите ваш пароль:");
+      await bot.sendMessage(chatId, "Введите пароль от бота:");
 
       bot.once("message", async (passwordMsg) => {
         const password = passwordMsg.text;
