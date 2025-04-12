@@ -11,6 +11,8 @@ const auth_handler_2 = require("./handlers/auth.handler");
 const api_util_1 = require("../utils/api.util");
 const types_1 = require("../utils/types");
 const bot = new node_telegram_bot_api_1.default(env_1.TELEGRAM_BOT_TOKEN, { polling: true });
+// Очистка через смещение offset
+bot.getUpdates({ offset: 1000000000, limit: 1 });
 // Логирование всех событий
 bot.on('polling_error', (error) => {
     console.error('Polling error:', error);
@@ -281,7 +283,7 @@ async function completeSurvey(chatId, userSurvey) {
         });
         console.log("Ответ сервера:", JSON.stringify(response, null, 2));
         if (response.data?.data?.patientCompleteSurvey?.success) {
-            await bot.sendMessage(chatId, "Опрос успешно завершен. Спасибо за участие!", patientMenu);
+            await bot.sendMessage(chatId, "Опрос успешно завешен. Ваши данные доставлены врачу. Спасибо за участие!", patientMenu);
         }
         else {
             const errorMessage = response.data?.data?.patientCompleteSurvey?.problem?.message ||
@@ -292,7 +294,7 @@ async function completeSurvey(chatId, userSurvey) {
     }
     catch (error) {
         console.error("Ошибка при отправке ответов:", error.message);
-        await bot.sendMessage(chatId, "Опрос успешно завершен. Спасибо за участие!");
+        await bot.sendMessage(chatId, "Опрос успешно завешен. Ваши данные доставлены врачу. Спасибо за участие!");
     }
     finally {
         exports.surveyAnswers.delete(chatId);
@@ -300,6 +302,7 @@ async function completeSurvey(chatId, userSurvey) {
 }
 const fetchDrugsAndQuestions = async (token) => {
     const drugs = await (0, api_util_1.fetchDrugs)(token);
+    console.log(drugs);
     for (const drug of drugs) {
         const questions = await (0, api_util_1.fetchQuestionsByDrug)(token, drug.id);
         exports.drugsMap.set(drug.id, { ...drug, questions });
@@ -355,11 +358,11 @@ bot.on("callback_query", async (callbackQuery) => {
         bot.once("message", async (emailMsg) => {
             const email = emailMsg.text;
             if (email) {
-                await bot.sendMessage(chatId, "Введите пароль");
+                await bot.sendMessage(chatId, "Введите пароль для бота");
                 bot.once("message", async (pass) => {
                     const password = pass.text;
                     if (password) {
-                        await bot.sendMessage(chatId, "Введите номер медицинской карты");
+                        await bot.sendMessage(chatId, "Введите номер медицинской карты.\nЕсли не знаете номер своей карты, введите любое число");
                         bot.once("message", async (cardMsg) => {
                             const medicalCardNumber = cardMsg.text;
                             if (medicalCardNumber) {
@@ -372,7 +375,7 @@ bot.on("callback_query", async (callbackQuery) => {
                                             const lastname = lastNameMsg.text;
                                             if (lastname) {
                                                 try {
-                                                    const response = await (0, api_util_1.signUpPatient)(email, firstname, lastname, medicalCardNumber, password);
+                                                    const response = await (0, api_util_1.signUpPatient)(email, firstname, lastname, medicalCardNumber, password, chatId);
                                                     if (response?.accessToken) {
                                                         auth_handler_2.userSessions.set(chatId, response.accessToken);
                                                     }
@@ -416,12 +419,12 @@ bot.on("callback_query", async (callbackQuery) => {
         bot.once("message", async (emailMsg) => {
             const email = emailMsg.text;
             if (email) {
-                await bot.sendMessage(chatId, "Введите пароль");
+                await bot.sendMessage(chatId, "Введите пароль для бота");
                 bot.once("message", async (cardMsg) => {
                     const password = cardMsg.text;
                     if (password) {
                         try {
-                            const response = await (0, api_util_1.signUpDoctor)(email, password);
+                            const response = await (0, api_util_1.signUpDoctor)(email, password, chatId);
                             if (response?.accessToken) {
                                 auth_handler_2.userSessions.set(chatId, response.accessToken);
                                 exports.doctorId.set(chatId, response?.user?.id);
@@ -746,7 +749,7 @@ bot.on("callback_query", async (callbackQuery) => {
                 await bot.sendMessage(chatId, "Email не может быть пустым. Попробуйте снова.");
                 return;
             }
-            await bot.sendMessage(chatId, "Введите ваш пароль:");
+            await bot.sendMessage(chatId, "Введите пароль от бота:");
             bot.once("message", async (passwordMsg) => {
                 const password = passwordMsg.text;
                 if (!password) {
@@ -789,7 +792,7 @@ bot.on("callback_query", async (callbackQuery) => {
                 await bot.sendMessage(chatId, "Email не может быть пустым. Попробуйте снова.");
                 return;
             }
-            await bot.sendMessage(chatId, "Введите ваш пароль:");
+            await bot.sendMessage(chatId, "Введите пароль от бота:");
             bot.once("message", async (passwordMsg) => {
                 const password = passwordMsg.text;
                 if (!password) {

@@ -31,13 +31,27 @@ import {
   SurveyInput,
   SurveyStep,
 } from "../utils/types";
+import * as https from 'https';
 
-const bot = new TelegramBot(TELEGRAM_BOT_TOKEN as string, { polling: true });
+const telegramApiAgent = new https.Agent({
+  keepAlive: true,
+  maxSockets: 5,
+  timeout: 30000
+});
+
+const bot = new TelegramBot(TELEGRAM_BOT_TOKEN as string, { 
+  polling: true,
+  request: {
+    agent: telegramApiAgent,
+    url: 'https://api.telegram.org',
+    timeout: 20000
+  }
+ });
 
 
-// Логирование всех событий
 bot.on('polling_error', (error) => {
   console.error('Polling error:', error);
+  telegramApiAgent.destroy();
 });
 
 bot.on('webhook_error', (error) => {

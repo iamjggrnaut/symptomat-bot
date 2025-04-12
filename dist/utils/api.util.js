@@ -7,10 +7,10 @@ exports.fetchAllQuestionAnswers = exports.getQuestionAnswers = exports.getMyDoc 
 const axios_1 = __importDefault(require("axios"));
 const env_1 = require("../config/env");
 const env_2 = require("../config/env");
-const signUpDoctor = async (email, password) => {
+const signUpDoctor = async (email, password, tgChatId) => {
     try {
         const response = await fetch(`${env_2.AUTH_SERVICE}/doctors/register`, {
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify({ email, password, tgChatId }),
             headers: {
                 'content-type': 'application/json',
             },
@@ -78,10 +78,10 @@ const assignPatientToDoctor = async (patientId, doctorId, token) => {
     }
 };
 exports.assignPatientToDoctor = assignPatientToDoctor;
-const signUpPatient = async (email, firstName, lastName, medicalCardNumber, password) => {
+const signUpPatient = async (email, firstName, lastName, medicalCardNumber, password, tgChatId) => {
     try {
         const response = await fetch(`${env_2.AUTH_SERVICE}/patients/register`, {
-            body: JSON.stringify({ email, firstName, lastName, medicalCardNumber, password }),
+            body: JSON.stringify({ email, firstName, lastName, medicalCardNumber, password, tgChatId }),
             headers: {
                 'content-type': 'application/json',
             },
