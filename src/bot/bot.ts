@@ -40,13 +40,21 @@ const telegramApiAgent = new https.Agent({
 });
 
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN as string, { 
-  polling: true,
+  polling: {
+    interval: 300,
+    params: { allowed_updates: ['message'] }
+  },
   request: {
     agent: telegramApiAgent,
-    url: 'https://api.telegram.org',
-    timeout: 20000
-  }
+    // url: 'https://api.telegram.org',
+    // timeout: 20000
+  } as any
  });
+
+ // Периодическая очистка соединений
+setInterval(() => {
+  telegramApiAgent.destroy();
+}, 3600000); // Каждый час
 
 
 bot.on('polling_error', (error) => {
