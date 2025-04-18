@@ -33,42 +33,82 @@ import {
 } from "../utils/types";
 import * as https from 'https';
 
-const telegramApiAgent = new https.Agent({
-  keepAlive: true,
-  maxSockets: 5,
-  timeout: 30000
-});
+// Конфигурация HTTP Agent для Telegram API
+const createTelegramApiAgent = () => {
+  const agent = new https.Agent({
+    keepAlive: true,
+    maxSockets: 5,
+    timeout: 30000
+  });
 
-const bot = new TelegramBot(TELEGRAM_BOT_TOKEN as string, { 
-  polling: {
-    interval: 300,
-    params: { allowed_updates: ['message'] }
-  },
-  request: {
-    agent: telegramApiAgent,
-    // url: 'https://api.telegram.org',
-    // timeout: 20000
-  } as any
- });
+  // Периодическая очистка соединений
+  const cleanupInterval = setInterval(() => {
+    console.log('Performing scheduled agent cleanup');
+    agent.destroy();
+  }, 3600000); // Каждый час
 
- // Периодическая очистка соединений
-setInterval(() => {
-  telegramApiAgent.destroy();
-}, 3600000); // Каждый час
+  return {
+    agent,
+    destroy: () => {
+      clearInterval(cleanupInterval);
+      agent.destroy();
+    }
+  };
+};
 
+// Инициализация бота с обработкой ошибок
+const initBot = (token: string) => {
+  const { agent, destroy } = createTelegramApiAgent();
 
-bot.on('polling_error', (error) => {
-  console.error('Polling error:', error);
-  telegramApiAgent.destroy();
-});
+  const bot = new TelegramBot(token, { 
+    polling: {
+      interval: 300,
+      autoStart: false, // Запуск вручную после инициализации
+      params: { allowed_updates: ['message'] }
+    },
+    request: {
+      agent,
+      timeout: 20000
+    } as any
+  });
 
-bot.on('webhook_error', (error) => {
-  console.error('Webhook error:', error);
-});
+  // Обработчики ошибок
+  bot.on('polling_error', (error) => {
+    console.error('Polling error:', error);
+    destroy();
+    // Попытка переподключения через 5 секунд
+    setTimeout(() => initBot(token), 5000);
+  });
 
-bot.on('message', (msg) => {
-  console.log('Received message:', msg);
-});
+  bot.on('webhook_error', (error) => {
+    console.error('Webhook error:', error);
+  });
+
+  // Очистка при завершении
+  const cleanup = () => {
+    console.log('Cleaning up resources...');
+    destroy();
+    bot.stopPolling();
+    process.exit(0);
+  };
+
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+  process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+    cleanup();
+  });
+
+  // Запуск polling после инициализации всех обработчиков
+  bot.startPolling().catch(err => {
+    console.error('Failed to start polling:', err);
+    process.exit(1);
+  });
+
+  return bot;
+};
+
+const bot = initBot(TELEGRAM_BOT_TOKEN as string);
 
 
 

@@ -44,36 +44,71 @@ const auth_handler_2 = require("./handlers/auth.handler");
 const api_util_1 = require("../utils/api.util");
 const types_1 = require("../utils/types");
 const https = __importStar(require("https"));
-const telegramApiAgent = new https.Agent({
-    keepAlive: true,
-    maxSockets: 5,
-    timeout: 30000
-});
-const bot = new node_telegram_bot_api_1.default(env_1.TELEGRAM_BOT_TOKEN, {
-    polling: {
-        interval: 300,
-        params: { allowed_updates: ['message'] }
-    },
-    request: {
-        agent: telegramApiAgent,
-        // url: 'https://api.telegram.org',
-        // timeout: 20000
-    }
-});
-// Периодическая очистка соединений
-setInterval(() => {
-    telegramApiAgent.destroy();
-}, 3600000); // Каждый час
-bot.on('polling_error', (error) => {
-    console.error('Polling error:', error);
-    telegramApiAgent.destroy();
-});
-bot.on('webhook_error', (error) => {
-    console.error('Webhook error:', error);
-});
-bot.on('message', (msg) => {
-    console.log('Received message:', msg);
-});
+// Конфигурация HTTP Agent для Telegram API
+const createTelegramApiAgent = () => {
+    const agent = new https.Agent({
+        keepAlive: true,
+        maxSockets: 5,
+        timeout: 30000
+    });
+    // Периодическая очистка соединений
+    const cleanupInterval = setInterval(() => {
+        console.log('Performing scheduled agent cleanup');
+        agent.destroy();
+    }, 3600000); // Каждый час
+    return {
+        agent,
+        destroy: () => {
+            clearInterval(cleanupInterval);
+            agent.destroy();
+        }
+    };
+};
+// Инициализация бота с обработкой ошибок
+const initBot = (token) => {
+    const { agent, destroy } = createTelegramApiAgent();
+    const bot = new node_telegram_bot_api_1.default(token, {
+        polling: {
+            interval: 300,
+            autoStart: false, // Запуск вручную после инициализации
+            params: { allowed_updates: ['message'] }
+        },
+        request: {
+            agent,
+            timeout: 20000
+        }
+    });
+    // Обработчики ошибок
+    bot.on('polling_error', (error) => {
+        console.error('Polling error:', error);
+        destroy();
+        // Попытка переподключения через 5 секунд
+        setTimeout(() => initBot(token), 5000);
+    });
+    bot.on('webhook_error', (error) => {
+        console.error('Webhook error:', error);
+    });
+    // Очистка при завершении
+    const cleanup = () => {
+        console.log('Cleaning up resources...');
+        destroy();
+        bot.stopPolling();
+        process.exit(0);
+    };
+    process.on('SIGINT', cleanup);
+    process.on('SIGTERM', cleanup);
+    process.on('uncaughtException', (err) => {
+        console.error('Uncaught Exception:', err);
+        cleanup();
+    });
+    // Запуск polling после инициализации всех обработчиков
+    bot.startPolling().catch(err => {
+        console.error('Failed to start polling:', err);
+        process.exit(1);
+    });
+    return bot;
+};
+const bot = initBot(env_1.TELEGRAM_BOT_TOKEN);
 const doctorMenu = {
     reply_markup: {
         inline_keyboard: [
